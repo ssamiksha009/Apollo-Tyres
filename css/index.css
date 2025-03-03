@@ -12,16 +12,18 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    background-color: #f4f4f4;
 }
 
 /* Header styling */
 .main-header {
-    background-color: #582C7C; /* Updated to the correct purple color */
-    height: 80px; /* Adjust height as needed */
+    background-color: #582C7C; /* Apollo Tyres purple */
+    height: 80px;
     width: 100%;
     display: flex;
     align-items: center;
-    padding: 0; /* Removed padding */
+    justify-content: space-between;
+    padding: 0 20px;
 }
 
 /* Logo styling */
@@ -29,33 +31,88 @@ body {
     height: 100%;
     display: flex;
     align-items: center;
-    margin: 0; /* Removed margin */
 }
 
 .logo {
-    height: 100%; /* Logo height as 100% of header height */
-    width: auto; /* Maintain aspect ratio */
-    margin: 0; /* Removed margin */
-    padding: 0; /* Removed padding */
+    height: 100%;
+    width: auto;
+}
+
+/* Main title styling */
+.main-title {
+    color: white;
+    font-size: 24px;
+    text-align: center;
+    flex-grow: 1;
+}
+
+/* Spacer for header balance */
+.spacer {
+    width: 100px; /* Approximately the width of the logo */
 }
 
 /* Main content area */
 main {
-    flex: 1; /* This makes the main content expand to fill available space */
-    padding: 20px;
+    flex: 1;
+    padding: 40px;
+}
+
+/* Dropdown section styling */
+.dropdown-section {
+    display: flex;
+    justify-content: space-between;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+/* Individual dropdown container */
+.dropdown-container {
+    margin: 10px;
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+}
+
+/* Dropdown label styling */
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #333;
+}
+
+/* Dropdown select styling */
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    font-size: 16px;
+}
+
+select:focus {
+    outline: none;
+    border-color: #582C7C;
+    box-shadow: 0 0 5px rgba(88, 44, 124, 0.3);
 }
 
 /* Footer styling */
 footer {
     padding: 20px;
     text-align: center;
+    background-color: #f0f0f0;
+    border-top: 1px solid #ddd;
 }
 
 /* Responsive design for laptop screens */
 @media screen and (min-width: 1024px) and (max-width: 1920px) {
-    /* These styles will apply specifically to laptop screens */
     main {
         max-width: 1600px;
         margin: 0 auto;
+    }
+    
+    .dropdown-section {
+        justify-content: space-around;
     }
 }

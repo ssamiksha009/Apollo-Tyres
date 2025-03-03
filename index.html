@@ -8,14 +8,53 @@
 </head>
 <body>
     <header class="main-header">
-        <!-- Adding the Apollo Tyres logo -->
+        <!-- Apollo Tyres logo -->
         <div class="logo-container">
-            <img src="/images/Apollo-Tyres-Logo.png" alt="Apollo Tyres Logo" class="logo">
+            <img src="images/Apollo-Tyres-Logo.png" alt="Apollo Tyres Logo" class="logo">
         </div>
+        
+        <!-- Main heading -->
+        <h1 class="main-title">Tyre Virtualization Tool</h1>
+        
+        <!-- Empty div to balance the header (for symmetry) -->
+        <div class="spacer"></div>
     </header>
     
     <main>
-        <!-- Main content will go here -->
+        <!-- Dropdown section -->
+        <section class="dropdown-section">
+            <!-- Region dropdown -->
+            <div class="dropdown-container">
+                <label for="region">Region:</label>
+                <select id="region" name="region">
+                    <option value="">Select Region</option>
+                    <option value="APMEA">APMEA</option>
+                    <option value="EUROPE">EUROPE</option>
+                    <option value="USA">USA</option>
+                </select>
+            </div>
+            
+            <!-- Department dropdown -->
+            <div class="dropdown-container">
+                <label for="department">Department:</label>
+                <select id="department" name="department">
+                    <option value="">Select Department</option>
+                    <option value="PCR">PCR</option>
+                    <option value="TBR">TBR</option>
+                </select>
+            </div>
+            
+            <!-- Protocol dropdown -->
+            <div class="dropdown-container">
+                <label for="protocol">Protocol:</label>
+                <select id="protocol" name="protocol">
+                    <option value="">Select Protocol</option>
+                    <option value="MF6.2">M.F 6.2</option>
+                    <option value="FTire">FTire</option>
+                    <option value="CDTire">CDTire</option>
+                </select>
+            </div>
+        </section>
     </main>
     
     <footer>
