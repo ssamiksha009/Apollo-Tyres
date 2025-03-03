@@ -1,0 +1,61 @@
+/* Reset some basic elements */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 1.6;
+    /* Make the body take up the full viewport height */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header styling */
+.main-header {
+    background-color: #582C7C; /* Updated to the correct purple color */
+    height: 80px; /* Adjust height as needed */
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0; /* Removed padding */
+}
+
+/* Logo styling */
+.logo-container {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    margin: 0; /* Removed margin */
+}
+
+.logo {
+    height: 100%; /* Logo height as 100% of header height */
+    width: auto; /* Maintain aspect ratio */
+    margin: 0; /* Removed margin */
+    padding: 0; /* Removed padding */
+}
+
+/* Main content area */
+main {
+    flex: 1; /* This makes the main content expand to fill available space */
+    padding: 20px;
+}
+
+/* Footer styling */
+footer {
+    padding: 20px;
+    text-align: center;
+}
+
+/* Responsive design for laptop screens */
+@media screen and (min-width: 1024px) and (max-width: 1920px) {
+    /* These styles will apply specifically to laptop screens */
+    main {
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+}
