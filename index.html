@@ -13,20 +13,17 @@
             <img src="images/Apollo-Tyres-Logo.png" alt="Apollo Tyres Logo" class="logo">
         </div>
         
-        <!-- Main heading -->
-        <h1 class="main-title">Tyre Virtualization Tool</h1>
-        
-        <!-- Empty div to balance the header (for symmetry) -->
-        <div class="spacer"></div>
+        <!-- Adding the heading -->
+        <h1 class="header-title">Tyre Virtualization Tool</h1>
     </header>
     
     <main>
         <!-- Dropdown section -->
-        <section class="dropdown-section">
-            <!-- Region dropdown -->
-            <div class="dropdown-container">
+        <div class="dropdown-container">
+            <!-- Region Dropdown -->
+            <div class="dropdown-group">
                 <label for="region">Region:</label>
-                <select id="region" name="region">
+                <select id="region" name="region" required>
                     <option value="">Select Region</option>
                     <option value="APMEA">APMEA</option>
                     <option value="EUROPE">EUROPE</option>
@@ -34,31 +31,66 @@
                 </select>
             </div>
             
-            <!-- Department dropdown -->
-            <div class="dropdown-container">
+            <!-- Department Dropdown -->
+            <div class="dropdown-group">
                 <label for="department">Department:</label>
-                <select id="department" name="department">
+                <select id="department" name="department" required>
                     <option value="">Select Department</option>
                     <option value="PCR">PCR</option>
                     <option value="TBR">TBR</option>
                 </select>
             </div>
             
-            <!-- Protocol dropdown -->
-            <div class="dropdown-container">
+            <!-- Protocol Dropdown -->
+            <div class="dropdown-group">
                 <label for="protocol">Protocol:</label>
-                <select id="protocol" name="protocol">
+                <select id="protocol" name="protocol" required>
                     <option value="">Select Protocol</option>
-                    <option value="MF6.2">M.F 6.2</option>
+                    <option value="MF62">M.F 6.2</option>
                     <option value="FTire">FTire</option>
                     <option value="CDTire">CDTire</option>
                 </select>
             </div>
-        </section>
+        </div>
+        
+        <!-- Submit Button -->
+        <div class="submit-container">
+            <button id="submitBtn" class="submit-button">Submit</button>
+        </div>
+        
+        <!-- Error message container -->
+        <div id="errorMessage" class="error-message"></div>
     </main>
     
     <footer>
         <!-- Footer content will go here -->
     </footer>
+
+    <script>
+        // JavaScript to handle the form submission
+        document.getElementById('submitBtn').addEventListener('click', function() {
+            const region = document.getElementById('region').value;
+            const department = document.getElementById('department').value;
+            const protocol = document.getElementById('protocol').value;
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // Check if all dropdowns are selected
+            if (region === '' || department === '' || protocol === '') {
+                errorMessage.textContent = 'Please select values for all dropdowns';
+                return;
+            }
+            
+            // Clear any previous error messages
+            errorMessage.textContent = '';
+            
+            // If protocol is MF62, redirect to mf.html
+            if (protocol === 'MF62') {
+                window.location.href = 'mf.html';
+            } else {
+                // For other protocols, you could add different redirections or actions here
+                alert('Selected: ' + region + ', ' + department + ', ' + protocol);
+            }
+        });
+    </script>
 </body>
 </html>

@@ -1,0 +1,28 @@
+/* Additional styles specific to the MF 6.2 page */
+.page-title {
+    text-align: center;
+    margin: 20px 0;
+    color: #582C7C;
+    font-size: 28px;
+    width: 100%;  /* Ensure full width */
+}
+
+.back-button-container {
+    text-align: center;
+    margin: 30px 0;
+}
+
+.back-button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #582C7C;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.back-button:hover {
+    background-color: #4a2569;
+}
