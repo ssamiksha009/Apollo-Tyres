@@ -1,4 +1,3 @@
-
 // File upload handling
 document.getElementById('excelFile').addEventListener('change', function(e) {
     const fileName = e.target.files[0].name;
@@ -58,8 +57,26 @@ document.getElementById('submitBtn').addEventListener('click', function() {
             // Create a new sheet with replaced values
             const newSheet = jsonData.map(row => 
                 row.map(cell => {
-                    // Convert to string for comparison and replacement
-                    const cellStr = String(cell);
+                    // Convert to string and remove any hidden characters/spaces
+                    const cellStr = String(cell).trim().replace(/\s+/g, '');
+                    
+                    // Debug log to see the exact cell value
+                    console.log('Cell value:', cellStr);
+
+                    // Check for the exact L1,L2,L3 pattern
+                    if (cellStr === 'L1,L2,L3') {
+                        console.log('Found L1,L2,L3 pattern');
+                        const result = `${replacements['L1']},${replacements['L2']},${replacements['L3']}`;
+                        console.log('Replacing with:', result);
+                        return result;
+                    } else if (cellStr.includes('L1') && cellStr.includes('L2') && cellStr.includes('L3')) {
+                        console.log('Found L1,L2,L3 in different format');
+                        const result = `${replacements['L1']},${replacements['L2']},${replacements['L3']}`;
+                        console.log('Replacing with:', result);
+                        return result;
+                    }
+                    
+                    // Handle single value replacements
                     return replacements[cellStr] || cell;
                 })
             );
