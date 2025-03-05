@@ -6,6 +6,7 @@
     <title>M.F 6.2 - Apollo Tyres R&D</title>
     <link rel="stylesheet" href="css/index.css">
     <link rel="stylesheet" href="css/mf.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <header class="main-header">
@@ -21,6 +22,15 @@
     <main>
         <h2 class="page-title">M.F 6.2</h2>
         
+        <!-- File Upload Section -->
+        <div class="file-upload-container">
+            <label for="excelFile" class="file-upload-label">
+                Upload Excel File
+                <input type="file" id="excelFile" name="excelFile" accept=".xlsx, .xls" required>
+            </label>
+            <span id="fileName" class="file-name"></span>
+        </div>
+        
         <!-- Input section -->
         <div class="input-container">
             <!-- Pressure Inputs -->
@@ -28,15 +38,15 @@
                 <h3>Pressure</h3>
                 <div class="input-row">
                     <label for="p1">P1:</label>
-                    <input type="text" id="p1" name="p1" placeholder="Enter P1 value">
+                    <input type="text" id="p1" name="p1" placeholder="Enter P1 value" required pattern="\d+(\.\d+)?">
                 </div>
                 <div class="input-row">
                     <label for="p2">P2:</label>
-                    <input type="text" id="p2" name="p2" placeholder="Enter P2 value">
+                    <input type="text" id="p2" name="p2" placeholder="Enter P2 value" required pattern="\d+(\.\d+)?">
                 </div>
                 <div class="input-row">
                     <label for="p3">P3:</label>
-                    <input type="text" id="p3" name="p3" placeholder="Enter P3 value">
+                    <input type="text" id="p3" name="p3" placeholder="Enter P3 value" required pattern="\d+(\.\d+)?">
                 </div>
             </div>
             
@@ -45,15 +55,15 @@
                 <h3>Load</h3>
                 <div class="input-row">
                     <label for="l1">L1:</label>
-                    <input type="text" id="l1" name="l1" placeholder="Enter L1 value">
+                    <input type="text" id="l1" name="l1" placeholder="Enter L1 value" required pattern="\d+(\.\d+)?">
                 </div>
                 <div class="input-row">
                     <label for="l2">L2:</label>
-                    <input type="text" id="l2" name="l2" placeholder="Enter L2 value">
+                    <input type="text" id="l2" name="l2" placeholder="Enter L2 value" required pattern="\d+(\.\d+)?">
                 </div>
                 <div class="input-row">
                     <label for="l3">L3:</label>
-                    <input type="text" id="l3" name="l3" placeholder="Enter L3 value">
+                    <input type="text" id="l3" name="l3" placeholder="Enter L3 value" required pattern="\d+(\.\d+)?">
                 </div>
             </div>
             
@@ -62,15 +72,15 @@
                 <h3>Speed</h3>
                 <div class="input-row">
                     <label for="v1">V1:</label>
-                    <input type="text" id="v1" name="v1" placeholder="Enter V1 value">
+                    <input type="text" id="v1" name="v1" placeholder="Enter V1 value" required pattern="\d+(\.\d+)?">
                 </div>
                 <div class="input-row">
                     <label for="v2">V2:</label>
-                    <input type="text" id="v2" name="v2" placeholder="Enter V2 value">
+                    <input type="text" id="v2" name="v2" placeholder="Enter V2 value" required pattern="\d+(\.\d+)?">
                 </div>
                 <div class="input-row">
                     <label for="v3">V3:</label>
-                    <input type="text" id="v3" name="v3" placeholder="Enter V3 value">
+                    <input type="text" id="v3" name="v3" placeholder="Enter V3 value" required pattern="\d+(\.\d+)?">
                 </div>
             </div>
         </div>
@@ -79,6 +89,9 @@
         <div class="submit-container">
             <button id="submitBtn" class="submit-button">Submit</button>
         </div>
+        
+        <!-- Error Message Container -->
+        <div id="errorMessage" class="error-message"></div>
         
         <!-- Back button -->
         <div class="back-button-container">
@@ -89,5 +102,89 @@
     <footer>
         <!-- Footer content will go here -->
     </footer>
+
+    <script>
+        // File upload handling
+        document.getElementById('excelFile').addEventListener('change', function(e) {
+            const fileName = e.target.files[0].name;
+            document.getElementById('fileName').textContent = fileName;
+        });
+
+        // Submit button handling
+        document.getElementById('submitBtn').addEventListener('click', function() {
+            // Validate file upload
+            const fileInput = document.getElementById('excelFile');
+            const errorMessage = document.getElementById('errorMessage');
+
+            // Check if file is uploaded
+            if (!fileInput.files.length) {
+                errorMessage.textContent = 'Please upload an Excel file';
+                return;
+            }
+
+            // Validate all input fields
+            const inputs = document.querySelectorAll('input[type="text"]');
+            for (let input of inputs) {
+                if (!input.value.trim()) {
+                    errorMessage.textContent = 'Please fill in all input fields';
+                    return;
+                }
+            }
+
+            // Clear any previous error messages
+            errorMessage.textContent = '';
+
+            // Read the Excel file
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                
+                // Process each sheet
+                const outputWorkbook = XLSX.utils.book_new();
+                
+                workbook.SheetNames.forEach((sheetName) => {
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    
+                    // Replace values in the sheet
+                    const replacements = {
+                        'P1': document.getElementById('p1').value,
+                        'P2': document.getElementById('p2').value,
+                        'P3': document.getElementById('p3').value,
+                        'L1': document.getElementById('l1').value,
+                        'L2': document.getElementById('l2').value,
+                        'L3': document.getElementById('l3').value,
+                        'V1': document.getElementById('v1').value,
+                        'V2': document.getElementById('v2').value,
+                        'V3': document.getElementById('v3').value
+                    };
+
+                    // Create a new sheet with replaced values
+                    const newSheet = jsonData.map(row => 
+                        row.map(cell => {
+                            // Convert to string for comparison and replacement
+                            const cellStr = String(cell);
+                            return replacements[cellStr] || cell;
+                        })
+                    );
+
+                    // Convert the modified data back to a worksheet
+                    const modifiedWorksheet = XLSX.utils.aoa_to_sheet(newSheet);
+                    
+                    // Add the modified sheet to the output workbook
+                    XLSX.utils.book_append_sheet(outputWorkbook, modifiedWorksheet, sheetName);
+                });
+
+                // Generate and download the output file
+                XLSX.writeFile(outputWorkbook, 'output.xlsx');
+            };
+            
+            // Read the file
+            reader.readAsArrayBuffer(fileInput.files[0]);
+        });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
+    <script src="js/mf.js"></script>
 </body>
 </html>
