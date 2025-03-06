@@ -3,6 +3,8 @@ const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
+const glob = require('glob');
 
 // Create express app
 const app = express();
@@ -185,6 +187,42 @@ function authenticateToken(req, res, next) {
         next();
     });
 }
+
+// Add new endpoint to read Excel file from protocol folder
+app.get('/api/read-protocol-excel', (req, res) => {
+    // Search for any Excel file in the protocol folder
+    glob('protocol/*.xlsx', (err, files) => {
+        if (err) {
+            console.error('Error finding Excel file:', err);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Error finding Excel file' 
+            });
+        }
+
+        if (files.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'No Excel file found in protocol folder' 
+            });
+        }
+
+        // Use the first Excel file found
+        const filePath = files[0];
+        
+        fs.readFile(filePath, (err, data) => {
+            if (err) {
+                console.error('Error reading Excel file:', err);
+                return res.status(500).json({ 
+                    success: false, 
+                    message: 'Error reading Excel file' 
+                });
+            }
+
+            res.send(data);
+        });
+    });
+});
 
 // Serve the main application
 app.get('*', (req, res) => {

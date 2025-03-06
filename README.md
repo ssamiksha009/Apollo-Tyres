@@ -20,3 +20,6 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Note: The script in server.js will handle creating an admin user
 -- with email: admin@apollotyres.com and password: Apollo@123
+
+
+Install the glob package by running: npm install glob
