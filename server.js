@@ -3,6 +3,12 @@ const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+<<<<<<< HEAD
+=======
+const fs = require('fs');
+const glob = require('glob');
+const XLSX = require('xlsx');
+>>>>>>> f9b61759274dd575d4bd3a179e73ab1cdcd014e2
 
 // Create express app
 const app = express();
@@ -38,7 +44,32 @@ db.connect(err => {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
     `;
+<<<<<<< HEAD
     
+=======
+    // Add this to the existing db.connect callback in server.js
+    const createMFTableQuery = `
+    CREATE TABLE IF NOT EXISTS mftable (
+        \`Number Of Runs\` INT PRIMARY KEY,
+        \`Tests\` VARCHAR(255),
+        \`IPs\` FLOAT,
+        \`Loads\` FLOAT,
+        \`IAs\` FLOAT,
+        \`SA Range\` FLOAT,
+        \`SR Range\` FLOAT,
+        \`Test Velocity\` VARCHAR(255)
+    )
+    `;
+
+    db.query(createMFTableQuery, (err) => {
+    if (err) {
+        console.error('Error creating mftable:', err);
+        return;
+    }
+    console.log('MF table created or already exists');
+    });
+
+>>>>>>> f9b61759274dd575d4bd3a179e73ab1cdcd014e2
     db.query(createTableQuery, (err) => {
         if (err) {
             console.error('Error creating users table:', err);
@@ -186,6 +217,45 @@ function authenticateToken(req, res, next) {
     });
 }
 
+<<<<<<< HEAD
+=======
+// Add new endpoint to read Excel file from protocol folder
+app.get('/api/read-protocol-excel', (req, res) => {
+    // Search for any Excel file in the protocol folder
+    glob('protocol/*.xlsx', (err, files) => {
+        if (err) {
+            console.error('Error finding Excel file:', err);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Error finding Excel file' 
+            });
+        }
+
+        if (files.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'No Excel file found in protocol folder' 
+            });
+        }
+
+        // Use the first Excel file found
+        const filePath = files[0];
+        
+        fs.readFile(filePath, (err, data) => {
+            if (err) {
+                console.error('Error reading Excel file:', err);
+                return res.status(500).json({ 
+                    success: false, 
+                    message: 'Error reading Excel file' 
+                });
+            }
+
+            res.send(data);
+        });
+    });
+});
+
+>>>>>>> f9b61759274dd575d4bd3a179e73ab1cdcd014e2
 // Serve the main application
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
@@ -209,4 +279,171 @@ const startServer = (attemptPort) => {
         });
 };
 
+<<<<<<< HEAD
+=======
+
+
+// Add this new endpoint to server.js
+
+// Add this new endpoint to server.js and include more detailed logging
+app.post('/api/process-mf-data', (req, res) => {  // Remove authenticateToken temporarily for testing
+    console.log('Received request to process MF data');
+    const replacements = req.body;
+    console.log('Received replacements:', replacements);
+    
+    // Search for any Excel file in the protocol folder
+    glob('protocol/*.xlsx', (err, files) => {
+        if (err) {
+            console.error('Error finding Excel file:', err);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Error finding Excel file' 
+            });
+        }
+
+        console.log('Found Excel files:', files);
+        if (files.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'No Excel file found in protocol folder' 
+            });
+        }
+
+        // Use the first Excel file found
+        const filePath = files[0];
+        console.log('Using Excel file:', filePath);
+        
+        fs.readFile(filePath, (err, data) => {
+            if (err) {
+                console.error('Error reading Excel file:', err);
+                return res.status(500).json({ 
+                    success: false, 
+                    message: 'Error reading Excel file' 
+                });
+            }
+
+            console.log('Successfully read Excel file');
+            try {
+                const workbook = XLSX.read(data);
+                const firstSheetName = workbook.SheetNames[0];
+                console.log('Using sheet:', firstSheetName);
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                console.log('Excel data row count:', jsonData.length);
+                console.log('Sample first row:', jsonData[0]);
+                
+                // Process each row and replace values
+                const processedData = jsonData.map(row => {
+                    const newRow = {...row};
+                    
+                    // Process string values that might contain P1, P2, P3, etc.
+                    for (let key in newRow) {
+                        if (typeof newRow[key] === 'string') {
+                            // Replace patterns like "L1,L2,L3" with actual values
+                            if (newRow[key].includes('L1') && 
+                                newRow[key].includes('L2') && 
+                                newRow[key].includes('L3')) {
+                                newRow[key] = `${replacements['L1']},${replacements['L2']},${replacements['L3']}`;
+                            } else {
+                                // Replace individual placeholders
+                                for (let placeholder in replacements) {
+                                    if (newRow[key].includes(placeholder)) {
+                                        newRow[key] = newRow[key].replace(
+                                            new RegExp(placeholder, 'g'), 
+                                            replacements[placeholder]
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    return newRow;
+                });
+                
+                console.log('Processed data row count:', processedData.length);
+                console.log('Sample processed first row:', processedData[0]);
+                
+                // Insert processed data into MySQL
+                let insertedCount = 0;
+                const insertPromises = processedData.map(row => {
+                    return new Promise((resolve, reject) => {
+                        // Make sure all required columns exist
+                        if (!('Number Of Runs' in row)) {
+                            console.log('Skipping row without Number Of Runs');
+                            return resolve(); // Skip rows without required primary key
+                        }
+                        
+                        console.log('Inserting row with Number Of Runs:', row['Number Of Runs']);
+                        
+                        const query = `
+                            INSERT INTO mftable 
+                            (\`Number Of Runs\`, \`Tests\`, \`IPs\`, \`Loads\`, \`IAs\`, \`SA Range\`, \`SR Range\`, \`Test Velocity\`) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE 
+                            \`Tests\` = VALUES(\`Tests\`),
+                            \`IPs\` = VALUES(\`IPs\`),
+                            \`Loads\` = VALUES(\`Loads\`),
+                            \`IAs\` = VALUES(\`IAs\`),
+                            \`SA Range\` = VALUES(\`SA Range\`),
+                            \`SR Range\` = VALUES(\`SR Range\`),
+                            \`Test Velocity\` = VALUES(\`Test Velocity\`)
+                        `;
+                        
+                        const values = [
+                            row['Number Of Runs'] || null,
+                            row['Tests'] || null,
+                            parseFloat(row['IPs']) || null,
+                            parseFloat(row['Loads']) || null,
+                            parseFloat(row['IAs']) || null,
+                            parseFloat(row['SA Range']) || null,
+                            parseFloat(row['SR Range']) || null,
+                            row['Test Velocity'] || null
+                        ];
+                        
+                        console.log('Insert query values:', values);
+                        
+                        db.query(query, values, (err, result) => {
+                            if (err) {
+                                console.error('Error inserting data:', err);
+                                reject(err);
+                            } else {
+                                console.log('Insert result:', result);
+                                insertedCount++;
+                                resolve();
+                            }
+                        });
+                    });
+                });
+                
+                Promise.all(insertPromises.filter(p => p)) // Filter out undefined promises
+                    .then(() => {
+                        console.log(`Successfully inserted/updated ${insertedCount} rows`);
+                        res.json({ 
+                            success: true, 
+                            message: `Data successfully processed and stored in the database (${insertedCount} rows)` 
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error inserting data:', error);
+                        res.status(500).json({ 
+                            success: false, 
+                            message: 'Error storing data in database' 
+                        });
+                    });
+                
+            } catch (error) {
+                console.error('Error processing Excel file:', error);
+                res.status(500).json({ 
+                    success: false, 
+                    message: 'Error processing Excel file: ' + error.message 
+                });
+            }
+        });
+    });
+});
+
+
+
+>>>>>>> f9b61759274dd575d4bd3a179e73ab1cdcd014e2
 startServer(port);
