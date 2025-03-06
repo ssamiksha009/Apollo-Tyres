@@ -12,6 +12,7 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    background-color: #f4f4f4;
 }
 
 /* Header styling */
@@ -46,7 +47,7 @@ body {
     left: 50%;
     transform: translateX(-50%);
     color: white;
-    font-size: 35px; /* Increased from 24px to 35px */
+    font-size: 35px;
     white-space: nowrap;
 }
 
@@ -54,48 +55,63 @@ body {
 main {
     flex: 1;
     padding: 30px;
-}
-
-/* Dropdown container */
-.dropdown-container {
     display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    max-width: 1200px;
-    margin: 20px auto;
+    justify-content: center;
+    align-items: center;
 }
 
-/* Individual dropdown group */
-.dropdown-group {
-    margin: 10px;
-    min-width: 200px;
-    flex: 1;
-}
-
-.dropdown-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-}
-
-.dropdown-group select {
+/* Login container */
+.login-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    padding: 40px;
     width: 100%;
-    padding: 8px;
+    max-width: 450px;
+}
+
+.login-container h2 {
+    color: #582C7C;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 28px;
+}
+
+/* Form group */
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 16px;
+    transition: border 0.3s;
 }
 
-/* Submit button container */
-.submit-container {
-    text-align: center;
-    margin: 30px auto;
+.form-group input:focus {
+    outline: none;
+    border-color: #582C7C;
 }
 
-/* Submit button styling */
-.submit-button {
-    padding: 12px 40px;
-    background-color: #2E8B57; /* Green color */
+.form-btn-group {
+    margin-top: 30px;
+}
+
+/* Login button styling */
+.login-button {
+    width: 100%;
+    padding: 14px;
+    background-color: #582C7C;
     color: white;
     border: none;
     border-radius: 4px;
@@ -105,8 +121,8 @@ main {
     transition: background-color 0.3s;
 }
 
-.submit-button:hover {
-    background-color: #216e43; /* Darker green on hover */
+.login-button:hover {
+    background-color: #4a2569;
 }
 
 /* Error message styling */
@@ -114,7 +130,7 @@ main {
     color: #d9534f;
     text-align: center;
     font-weight: bold;
-    margin-top: 10px;
+    margin-top: 15px;
     min-height: 20px;
 }
 
@@ -122,37 +138,23 @@ main {
 footer {
     padding: 20px;
     text-align: center;
+    margin-top: auto;
 }
 
 /* Responsive design for laptop screens */
 @media screen and (min-width: 1024px) and (max-width: 1920px) {
-    main {
-        max-width: 1600px;
-        margin: 0 auto;
+    .login-container {
+        max-width: 500px;
     }
 }
 
-/* Add this to your existing index.css file */
-
-/* Logout button container */
-.logout-container {
-    position: absolute;
-    right: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-}
-
-.logout-button {
-    padding: 8px 15px;
-    background-color: #d9534f;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.logout-button:hover {
-    background-color: #c9302c;
+/* Responsive design for tablets and mobile */
+@media screen and (max-width: 768px) {
+    .header-title {
+        font-size: 24px;
+    }
+    
+    .login-container {
+        padding: 25px;
+    }
 }
