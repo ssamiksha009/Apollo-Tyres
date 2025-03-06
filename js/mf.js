@@ -3,64 +3,69 @@ document.getElementById('excelFile').addEventListener('change', function(e) {
     const fileName = e.target.files[0].name;
     document.getElementById('fileName').textContent = fileName;
 });
-
-// Submit button handling
+// Updated mf.js
 document.getElementById('submitBtn').addEventListener('click', function() {
     const errorMessage = document.getElementById('errorMessage');
     
     // Clear any previous error messages
     errorMessage.textContent = '';
 
-    // Make a request to the server to read the Excel file
-    fetch('/api/read-protocol-excel')
-        .then(response => response.arrayBuffer())
-        .then(data => {
-            const workbook = XLSX.read(new Uint8Array(data), {type: 'array'});
-            
-            // Process each sheet
-            const outputWorkbook = XLSX.utils.book_new();
-            
-            workbook.SheetNames.forEach((sheetName) => {
-                const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-                
-                // Replace values in the sheet
-                const replacements = {
-                    'P1': document.getElementById('p1').value,
-                    'P2': document.getElementById('p2').value,
-                    'P3': document.getElementById('p3').value,
-                    'L1': document.getElementById('l1').value,
-                    'L2': document.getElementById('l2').value,
-                    'L3': document.getElementById('l3').value,
-                    'V1': document.getElementById('v1').value,
-                    'V2': document.getElementById('v2').value,
-                    'V3': document.getElementById('v3').value
-                };
+    // Get the values from the input fields
+    const replacements = {
+        'P1': document.getElementById('p1').value,
+        'P2': document.getElementById('p2').value,
+        'P3': document.getElementById('p3').value,
+        'L1': document.getElementById('l1').value,
+        'L2': document.getElementById('l2').value,
+        'L3': document.getElementById('l3').value,
+        'V1': document.getElementById('v1').value,
+        'V2': document.getElementById('v2').value,
+        'V3': document.getElementById('v3').value
+    };
 
-                // Create a new sheet with replaced values
-                const newSheet = jsonData.map(row => 
-                    row.map(cell => {
-                        const cellStr = String(cell).trim().replace(/\s+/g, '');
-                        
-                        if (cellStr === 'L1,L2,L3') {
-                            return `${replacements['L1']},${replacements['L2']},${replacements['L3']}`;
-                        } else if (cellStr.includes('L1') && cellStr.includes('L2') && cellStr.includes('L3')) {
-                            return `${replacements['L1']},${replacements['L2']},${replacements['L3']}`;
-                        }
-                        
-                        return replacements[cellStr] || cell;
-                    })
-                );
+    console.log('Sending replacement values:', replacements);
 
-                const modifiedWorksheet = XLSX.utils.aoa_to_sheet(newSheet);
-                XLSX.utils.book_append_sheet(outputWorkbook, modifiedWorksheet, sheetName);
-            });
-
-            // Generate and download the output file
-            XLSX.writeFile(outputWorkbook, 'output.xlsx');
-        })
-        .catch(error => {
-            errorMessage.textContent = 'Error processing the Excel file. Please try again.';
-            console.error('Error:', error);
-        });
+    // Make a request to the server to read and process the Excel file
+    fetch('/api/process-mf-data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(replacements)
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            throw new Error('Server error: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data);
+        if (data.success) {
+            errorMessage.textContent = data.message;
+            // Change text color to green for success message
+            errorMessage.style.color = '#2E8B57';
+        } else {
+            errorMessage.textContent = data.message;
+            // Reset to red for error messages
+            errorMessage.style.color = '#d9534f';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        errorMessage.textContent = 'Error processing the data. Please try again.';
+        errorMessage.style.color = '#d9534f';
+    });
 });
+
+// Add this to the fetch request
+const token = localStorage.getItem('authToken');
+fetch('/api/process-mf-data', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(replacements)
+})

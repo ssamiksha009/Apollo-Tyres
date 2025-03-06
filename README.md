@@ -23,3 +23,5 @@ CREATE TABLE IF NOT EXISTS users (
 
 
 Install the glob package by running: npm install glob
+
+npm install xlsx --save
