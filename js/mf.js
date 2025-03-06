@@ -16,15 +16,6 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         return;
     }
 
-    // Validate all input fields
-    const inputs = document.querySelectorAll('input[type="text"]');
-    for (let input of inputs) {
-        if (!input.value.trim()) {
-            errorMessage.textContent = 'Please fill in all input fields';
-            return;
-        }
-    }
-
     // Clear any previous error messages
     errorMessage.textContent = '';
 
