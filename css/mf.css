@@ -1,21 +1,49 @@
 /* Additional styles specific to the MF 6.2 page */
+body {
+    min-height: 100vh;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.main-header {
+    padding: 10px 0;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 20px;
+}
+
 .page-title {
     text-align: center;
-    margin: 20px 0;
+    margin: 10px 0;
     color: #582C7C;
     font-size: 28px;
     width: 100%;
 }
 
 .input-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.input-container {
+    flex: 1;
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
     max-width: 1200px;
-    margin: 30px auto;
+    margin: 20px auto;
+    gap: 15px;
 }
 
 .input-group {
     flex: 1;
+    display: flex;
+    flex-direction: column;
     margin: 0 15px;
     text-align: center;
 }
@@ -57,6 +85,7 @@
     text-align: center;
     font-weight: bold;
     margin-top: 10px;
+    min-height: 20px; /* Keep space consistent */
 }
 
 .submit-container {
@@ -80,22 +109,31 @@
     background-color: #216e43; /* Darker green on hover */
 }
 
-.back-button-container {
-    text-align: center;
-    margin: 30px 0;
+footer {
+    margin-top: auto;
+    padding: 10px 0;
 }
 
-.back-button {
-    display: inline-block;
-    padding: 10px 20px;
-    background-color: #582C7C;
-    color: white;
-    text-decoration: none;
-    border-radius: 4px;
-    font-weight: bold;
-    transition: background-color 0.3s;
+/* Media query for smaller screens */
+@media screen and (max-width: 768px) {
+    .input-container {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .input-group {
+        width: 100%;
+        margin: 10px 0;
+    }
+
+    .input-row input {
+        max-width: 150px;
+    }
 }
 
-.back-button:hover {
-    background-color: #4a2569;
+/* Remove these classes */
+.file-upload-container,
+.file-upload-label,
+.file-name {
+    display: none;
 }

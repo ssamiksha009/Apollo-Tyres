@@ -19,13 +19,6 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Note: The script in server.js will handle creating an admin user
-<<<<<<< HEAD
--- with email: admin@apollotyres.com and password: Apollo@123
-=======
 -- with email: admin@apollotyres.com and password: Apollo@123
 
-
-Install the glob package by running: npm install glob
-
-npm install xlsx --save
->>>>>>> f9b61759274dd575d4bd3a179e73ab1cdcd014e2
+npm install multer
