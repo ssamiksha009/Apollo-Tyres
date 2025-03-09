@@ -75,6 +75,28 @@ db.connect(err => {
             }
         });
     });
+
+    // Create the mf_data table if it doesn't exist
+    const createMFDataTable = `
+        CREATE TABLE IF NOT EXISTS mf_data (
+            number_of_runs INT PRIMARY KEY,
+            tests VARCHAR(255),
+            ips VARCHAR(255),
+            loads VARCHAR(255),
+            ias VARCHAR(255),
+            sa_range VARCHAR(255),
+            sr_range VARCHAR(255),
+            test_velocity VARCHAR(255)
+        )
+    `;
+
+    db.query(createMFDataTable, (err) => {
+        if (err) {
+            console.error('Error creating mf_data table:', err);
+            return;
+        }
+        console.log('MF data table created successfully');
+    });
 });
 
 // Secret key for JWT
@@ -196,14 +218,10 @@ const storage = multer.diskStorage({
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir);
         }
-        // Check if output.xlsx exists and remove it
-        const outputPath = path.join(dir, 'output.xlsx');
-        if (fs.existsSync(outputPath)) {
-            fs.unlinkSync(outputPath);
-        }
         cb(null, dir);
     },
     filename: function (req, file, cb) {
+        // Use fixed filename 'output.xlsx'
         cb(null, 'output.xlsx');
     }
 });
@@ -222,8 +240,71 @@ app.post('/api/save-excel', upload.single('excelFile'), (req, res) => {
     res.json({
         success: true,
         message: 'File saved successfully',
-        filename: req.file.filename
+        filename: 'output.xlsx'
     });
+});
+
+// Add new endpoint for storing Excel data
+app.post('/api/store-excel-data', (req, res) => {
+    const { data } = req.body;
+    
+    if (!Array.isArray(data) || !data.length) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid data format'
+        });
+    }
+
+    const insertQuery = `
+        INSERT INTO mf_data 
+        (number_of_runs, tests, ips, loads, ias, sa_range, sr_range, test_velocity)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+        tests = VALUES(tests),
+        ips = VALUES(ips),
+        loads = VALUES(loads),
+        ias = VALUES(ias),
+        sa_range = VALUES(sa_range),
+        sr_range = VALUES(sr_range),
+        test_velocity = VALUES(test_velocity)
+    `;
+
+    const promises = data.map(row => {
+        return new Promise((resolve, reject) => {
+            db.query(insertQuery, [
+                row.number_of_runs,
+                row.tests,
+                row.ips,
+                row.loads,
+                row.ias,
+                row.sa_range,
+                row.sr_range,
+                row.test_velocity
+            ], (err, result) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(result);
+                }
+            });
+        });
+    });
+
+    Promise.all(promises)
+        .then(() => {
+            console.log('Successfully inserted values in table mf_data');  // Add this line
+            res.json({
+                success: true,
+                message: 'Data stored successfully'
+            });
+        })
+        .catch(err => {
+            console.error('Error storing data:', err);
+            res.status(500).json({
+                success: false,
+                message: 'Error storing data'
+            });
+        });
 });
 
 // Update Excel file reading endpoint
@@ -245,6 +326,31 @@ app.get('/api/read-protocol-excel', (req, res) => {
                 message: 'Error reading Excel file' 
             });
         }
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(data);
+    });
+});
+
+// Add new endpoint for reading output Excel file
+app.get('/api/read-output-excel', (req, res) => {
+    const filePath = path.join(__dirname, 'protocol', 'output.xlsx');
+    
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ 
+            success: false, 
+            message: 'Output file not found' 
+        });
+    }
+
+    fs.readFile(filePath, (err, data) => {
+        if (err) {
+            console.error('Error reading Excel file:', err);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Error reading Excel file' 
+            });
+        }
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.send(data);
     });
 });

@@ -82,10 +82,104 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                 if (!data.success) {
                     throw new Error(data.message || 'Error saving file');
                 }
+
+                // Read the output file
+                return fetch('/api/read-output-excel');
+            })
+            .then(response => response.arrayBuffer())
+            .then(data => {
+                const workbook = XLSX.read(new Uint8Array(data), {type: 'array'});
+                const extractedData = [];
+                // Rest of the data extraction logic remains the same
+                workbook.SheetNames.forEach((sheetName) => {
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    
+                    // Find the header row that contains "Number Of Runs"
+                    let headerRowIndex = -1;
+                    for(let i = 0; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if(row && row.some(cell => 
+                            cell && typeof cell === 'string' && 
+                            cell.toLowerCase().includes('number of runs'))) {
+                            headerRowIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    if (headerRowIndex === -1) return;
+                    
+                    const headerRow = jsonData[headerRowIndex];
+                    const getColumnIndex = (header) => {
+                        return headerRow.findIndex(col => 
+                            col && typeof col === 'string' && 
+                            col.toLowerCase().includes(header.toLowerCase())
+                        );
+                    };
+
+                    const columns = {
+                        runs: getColumnIndex('number of runs'),
+                        tests: getColumnIndex('tests'),
+                        ips: getColumnIndex('ips'),
+                        loads: getColumnIndex('loads'),
+                        ias: getColumnIndex('ias'),
+                        sa: getColumnIndex('sa range'),
+                        sr: getColumnIndex('sr range'),
+                        velocity: getColumnIndex('test velocity')
+                    };
+
+                    // Verify all required columns were found
+                    if (Object.values(columns).some(idx => idx === -1)) {
+                        console.error('Missing required columns:', columns);
+                        return;
+                    }
+
+                    // Extract data rows starting from the row after headers
+                    for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        // Skip empty rows or rows without a run number
+                        if (!row || !row[columns.runs]) continue;
+                        
+                        const runNumber = parseInt(row[columns.runs]);
+                        // Only process rows with valid run numbers
+                        if (!isNaN(runNumber)) {
+                            extractedData.push({
+                                number_of_runs: runNumber,
+                                tests: row[columns.tests]?.toString() || '',
+                                ips: row[columns.ips]?.toString() || '',
+                                loads: row[columns.loads]?.toString() || '',
+                                ias: row[columns.ias]?.toString() || '',
+                                sa_range: row[columns.sa]?.toString() || '',
+                                sr_range: row[columns.sr]?.toString() || '',
+                                test_velocity: row[columns.velocity]?.toString() || ''
+                            });
+                        }
+                    }
+                });
+
+                // Only proceed if we found data to save
+                if (extractedData.length === 0) {
+                    throw new Error('No valid data found in Excel file');
+                }
+
+                // Send extracted data to server
+                return fetch('/api/store-excel-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ data: extractedData })
+                });
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message || 'Error storing data');
+                }
             })
             .catch(error => {
                 errorMessage.style.color = '#d9534f';
-                errorMessage.textContent = error.message || 'Error saving file. Please try again.';
+                errorMessage.textContent = error.message || 'Error processing file. Please try again.';
             });
         })
         .catch(error => {
