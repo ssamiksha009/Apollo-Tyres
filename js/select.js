@@ -1,3 +1,7 @@
+document.getElementById('logoutBtn').addEventListener('click', function() {
+    window.location.href = '/login.html';
+});
+
 // Fetch and display MF data when the page loads
 window.addEventListener('load', function() {
     fetch('/api/get-mf-data')

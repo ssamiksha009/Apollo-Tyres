@@ -1,3 +1,8 @@
+// Add at the beginning of the file
+document.getElementById('logoutBtn').addEventListener('click', function() {
+    window.location.href = '/login.html';
+});
+
 // Submit button handling
 document.getElementById('submitBtn').addEventListener('click', function() {
     const errorMessage = document.getElementById('errorMessage');
