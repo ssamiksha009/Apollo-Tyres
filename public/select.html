@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Data - Apollo Tyres R&D</title>
+    <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/select.css">
+</head>
+<body>
+    <header class="main-header">
+        <div class="logo-container">
+            <img src="/images/Apollo-Tyres-Logo.png" alt="Apollo Tyres Logo" class="logo">
+        </div>
+        <h1 class="header-title">Tyre Virtualization Tool</h1>
+    </header>
+    
+    <main>
+        <h2 class="page-title">Select Data</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th class="checkbox-cell">Select</th>
+                    <th>Number of Runs</th>
+                    <th>Tests</th>
+                    <th>IPs</th>
+                    <th>Loads</th>
+                    <th>IAs</th>
+                    <th>SA Range</th>
+                    <th>SR Range</th>
+                    <th>Test Velocity</th>
+                </tr>
+            </thead>
+            <tbody id="dataTableBody">
+                <!-- Data will be inserted here dynamically -->
+            </tbody>
+        </table>
+        <div class="button-container">
+            <button id="runBtn" class="run-button">Run</button>
+        </div>
+    </main>
+
+    <script src="/js/select.js"></script>
+</body>
+</html>

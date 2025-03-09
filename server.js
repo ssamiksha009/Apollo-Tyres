@@ -355,6 +355,21 @@ app.get('/api/read-output-excel', (req, res) => {
     });
 });
 
+// Add new endpoint to get MF data
+app.get('/api/get-mf-data', (req, res) => {
+    const query = 'SELECT * FROM mf_data ORDER BY number_of_runs';
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching MF data:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching data'
+            });
+        }
+        res.json(results);
+    });
+});
+
 // Serve the main application
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));

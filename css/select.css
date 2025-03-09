@@ -1,0 +1,41 @@
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.data-table th, .data-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.data-table th {
+    background-color: #f4f4f4;
+}
+
+.checkbox-cell {
+    width: 50px;
+    text-align: center;
+}
+
+.button-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+/* Update run button styling to match submit button */
+.run-button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.run-button:hover {
+    background-color: #45a049;
+}

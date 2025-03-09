@@ -176,6 +176,8 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                 if (!data.success) {
                     throw new Error(data.message || 'Error storing data');
                 }
+                // Redirect to select.html after successful insertion
+                window.location.href = '/select.html';
             })
             .catch(error => {
                 errorMessage.style.color = '#d9534f';
