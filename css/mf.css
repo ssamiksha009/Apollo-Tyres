@@ -80,12 +80,20 @@ main {
     border-color: #d9534f;
 }
 
+.input-row input.invalid {
+    border-color: #dc3545;
+    background-color: #fff8f8;
+}
+
 .error-message {
-    color: #d9534f;
+    color: #dc3545;
     text-align: center;
     font-weight: bold;
-    margin-top: 10px;
-    min-height: 20px; /* Keep space consistent */
+    margin: 15px 0;
+    padding: 10px;
+    font-size: 14px;
+    min-height: 20px;
+    display: block;
 }
 
 .submit-container {

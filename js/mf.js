@@ -7,6 +7,25 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
 document.getElementById('submitBtn').addEventListener('click', function() {
     const errorMessage = document.getElementById('errorMessage');
     errorMessage.textContent = '';
+    
+    // Check if all inputs are filled and valid
+    const inputs = document.querySelectorAll('input[required]');
+    let allValid = true;
+    
+    inputs.forEach(input => {
+        if (!input.value || !input.checkValidity()) {
+            allValid = false;
+            input.classList.add('invalid');
+        } else {
+            input.classList.remove('invalid');
+        }
+    });
+
+    if (!allValid) {
+        errorMessage.textContent = '* All fields are mandatory and must be positive numbers';
+        errorMessage.style.display = 'block'; // Make sure it's visible
+        return;
+    }
 
     // Make a request to the server to read the Excel file
     fetch('/api/read-protocol-excel')
