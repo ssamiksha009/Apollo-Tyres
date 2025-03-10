@@ -11,9 +11,6 @@ window.addEventListener('load', function() {
             data.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td class="checkbox-cell">
-                        <input type="checkbox" value="${row.number_of_runs}">
-                    </td>
                     <td>${row.number_of_runs}</td>
                     <td>${row.tests}</td>
                     <td>${row.ips}</td>
@@ -29,16 +26,8 @@ window.addEventListener('load', function() {
         .catch(error => console.error('Error loading data:', error));
 });
 
-// Add Run button handler
+// Replace the Run button handler with simplified version
 document.getElementById('runBtn').addEventListener('click', function() {
-    const selectedRows = document.querySelectorAll('input[type="checkbox"]:checked');
-    const selectedIds = Array.from(selectedRows).map(checkbox => checkbox.value);
-    
-    if (selectedIds.length === 0) {
-        alert('Please select at least one row');
-        return;
-    }
-    
-    console.log('Selected run numbers:', selectedIds);
     // TODO: Add functionality for what happens when Run is clicked
+    console.log('Run button clicked');
 });
