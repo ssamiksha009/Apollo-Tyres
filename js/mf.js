@@ -202,7 +202,39 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                 if (!data.success) {
                     throw new Error(data.message || 'Error storing data');
                 }
-                // Redirect to select.html after successful insertion
+
+                // Update IA values first
+                const iaValue = parseFloat(document.getElementById('ia').value.trim());
+                return fetch('/api/update-ia-values', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ iaValue })
+                });
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message || 'Error updating IA values');
+                }
+
+                // Then update SR values
+                const srValue = parseFloat(document.getElementById('sr').value.trim());
+                return fetch('/api/update-sr-values', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ srValue })
+                });
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message || 'Error updating SR values');
+                }
+                // Redirect to select.html after successful update
                 window.location.href = '/select.html';
             })
             .catch(error => {
