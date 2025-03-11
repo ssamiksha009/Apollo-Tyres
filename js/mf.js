@@ -51,7 +51,9 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     'V1': document.getElementById('v1').value.trim() || null,
                     'V2': document.getElementById('v2').value.trim() || null,
                     'V3': document.getElementById('v3').value.trim() || null,
-                    'V4': document.getElementById('v4').value.trim() || null
+                    'V4': document.getElementById('v4').value.trim() || null,
+                    'IA': document.getElementById('ia').value.trim() || null,
+                    'SR': document.getElementById('sr').value.trim() || null
                 };
 
                 // Create a new sheet while preserving all original data

@@ -1,13 +1,13 @@
-
 // JavaScript to handle the form submission
 document.getElementById('submitBtn').addEventListener('click', function() {
     const region = document.getElementById('region').value;
     const department = document.getElementById('department').value;
+    const tyreSize = document.getElementById('tyreSize').value;
     const protocol = document.getElementById('protocol').value;
     const errorMessage = document.getElementById('errorMessage');
     
     // Check if all dropdowns are selected
-    if (region === '' || department === '' || protocol === '') {
+    if (region === '' || department === '' || tyreSize === '' || protocol === '') {
         errorMessage.textContent = 'Please select values for all dropdowns';
         return;
     }
@@ -20,6 +20,6 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         window.location.href = 'mf.html';
     } else {
         // For other protocols, you could add different redirections or actions here
-        alert('Selected: ' + region + ', ' + department + ', ' + protocol);
+        alert('Selected: ' + region + ', ' + department + ', ' + tyreSize + ', ' + protocol);
     }
 });
