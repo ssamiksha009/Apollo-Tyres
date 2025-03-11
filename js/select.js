@@ -19,6 +19,9 @@ window.addEventListener('load', function() {
                     <td>${row.sa_range}</td>
                     <td>${row.sr_range}</td>
                     <td>${row.test_velocity}</td>
+                    <td class="status-cell">
+                        <span class="status-indicator">✕</span>
+                    </td>
                 `;
                 tableBody.appendChild(tr);
             });
