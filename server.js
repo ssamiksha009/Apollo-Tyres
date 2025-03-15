@@ -79,7 +79,7 @@ db.connect(err => {
     // Create the mf_data table if it doesn't exist
     const createMFDataTable = `
         CREATE TABLE IF NOT EXISTS mf_data (
-            number_of_runs INT PRIMARY KEY,
+            number_of_runs INT,
             tests VARCHAR(255),
             ips VARCHAR(255),
             loads VARCHAR(255),
@@ -104,8 +104,8 @@ const JWT_SECRET = 'apollo-tyres-secret-key'; // In production, use environment 
 
 
 // ...existing code...
-// Update the static file middleware
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/css', express.static(path.join(__dirname, 'css')));
 app.use('/css', express.static(path.join(__dirname, 'css')));
 app.use('/js', express.static(path.join(__dirname, 'js')));
 app.use('/images', express.static(path.join(__dirname, 'images')));
@@ -512,6 +512,28 @@ app.post('/api/update-sr-values', (req, res) => {
             success: true,
             message: 'SR values updated successfully'
         });
+    });
+});
+
+// Add new endpoint to get test summary data
+app.get('/api/get-test-summary', (req, res) => {
+    const query = `
+        SELECT tests, COUNT(*) as count
+        FROM mf_data
+        WHERE tests IS NOT NULL AND tests != ''
+        GROUP BY tests
+        ORDER BY count DESC
+    `;
+    
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching test summary:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching test summary'
+            });
+        }
+        res.json(results);
     });
 });
 

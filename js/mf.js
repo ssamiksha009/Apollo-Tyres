@@ -3,6 +3,24 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
     window.location.href = '/login.html';
 });
 
+function updateTestSummary() {
+    fetch('/api/get-test-summary')
+        .then(response => response.json())
+        .then(data => {
+            const summaryContainer = document.getElementById('testSummary');
+            summaryContainer.innerHTML = data.map(item => `
+                <div class="summary-item">
+                    <span class="test-name">${item.tests}:</span>
+                    <span class="test-count">${item.count}</span>
+                </div>
+            `).join('');
+        })
+        .catch(error => console.error('Error fetching test summary:', error));
+}
+
+// Call when page loads
+window.addEventListener('load', updateTestSummary);
+
 // Submit button handling
 document.getElementById('submitBtn').addEventListener('click', function() {
     const errorMessage = document.getElementById('errorMessage');
@@ -229,11 +247,12 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     body: JSON.stringify({ srValue })
                 });
             })
-            .then(response => response.json())
             .then(data => {
                 if (!data.success) {
                     throw new Error(data.message || 'Error updating SR values');
                 }
+                // Update summary before redirect
+                updateTestSummary();
                 // Redirect to select.html after successful update
                 window.location.href = '/select.html';
             })
