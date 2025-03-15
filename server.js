@@ -255,56 +255,53 @@ app.post('/api/store-excel-data', (req, res) => {
         });
     }
 
-    const insertQuery = `
-        INSERT INTO mf_data 
-        (number_of_runs, tests, ips, loads, ias, sa_range, sr_range, test_velocity)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-        tests = VALUES(tests),
-        ips = VALUES(ips),
-        loads = VALUES(loads),
-        ias = VALUES(ias),
-        sa_range = VALUES(sa_range),
-        sr_range = VALUES(sr_range),
-        test_velocity = VALUES(test_velocity)
-    `;
-
-    const promises = data.map(row => {
-        return new Promise((resolve, reject) => {
-            db.query(insertQuery, [
-                row.number_of_runs,
-                row.tests,
-                row.ips,
-                row.loads,
-                row.ias,
-                row.sa_range,
-                row.sr_range,
-                row.test_velocity
-            ], (err, result) => {
-                if (err) {
-                    reject(err);
-                } else {
-                    resolve(result);
-                }
+    // First truncate the table
+    const truncateQuery = 'TRUNCATE TABLE mf_data';
+    db.query(truncateQuery, (truncateErr) => {
+        if (truncateErr) {
+            console.error('Error truncating table:', truncateErr);
+            return res.status(500).json({
+                success: false,
+                message: 'Error clearing existing data'
             });
-        });
-    });
+        }
 
-    Promise.all(promises)
-        .then(() => {
-            console.log('Successfully inserted values in table mf_data');  // Add this line
+        // Simple insert query without ON DUPLICATE KEY UPDATE
+        const insertQuery = `
+            INSERT INTO mf_data 
+            (number_of_runs, tests, ips, loads, ias, sa_range, sr_range, test_velocity)
+            VALUES ?
+        `;
+
+        // Convert data array to array of arrays for bulk insert
+        const values = data.map(row => [
+            row.number_of_runs,
+            row.tests,
+            row.ips,
+            row.loads,
+            row.ias,
+            row.sa_range,
+            row.sr_range,
+            row.test_velocity
+        ]);
+
+        // Use bulk insert instead of multiple single inserts
+        db.query(insertQuery, [values], (err, result) => {
+            if (err) {
+                console.error('Error storing data:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Error storing data'
+                });
+            }
+
+            console.log('Successfully inserted values in table mf_data');
             res.json({
                 success: true,
                 message: 'Data stored successfully'
             });
-        })
-        .catch(err => {
-            console.error('Error storing data:', err);
-            res.status(500).json({
-                success: false,
-                message: 'Error storing data'
-            });
         });
+    });
 });
 
 // Update Excel file reading endpoint

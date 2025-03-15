@@ -247,6 +247,7 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     body: JSON.stringify({ srValue })
                 });
             })
+            .then(response => response.json())
             .then(data => {
                 if (!data.success) {
                     throw new Error(data.message || 'Error updating SR values');
