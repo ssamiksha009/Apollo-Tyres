@@ -22,3 +22,5 @@ CREATE TABLE IF NOT EXISTS users (
 -- with email: admin@apollotyres.com and password: Apollo@123
 
 npm install multer
+
+npm install rimraf

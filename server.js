@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const rimraf = require('rimraf');  // Add this at the top with other requires
 
 // Create express app
 const app = express();
@@ -244,7 +245,31 @@ app.post('/api/save-excel', upload.single('excelFile'), (req, res) => {
     });
 });
 
-// Add new endpoint for storing Excel data
+// Add these utility functions after other middleware definitions
+function clearAbaqusFolder() {
+    const abaqusPath = path.join(__dirname, 'abaqus');
+    if (fs.existsSync(abaqusPath)) {
+        rimraf.sync(abaqusPath);
+    }
+    fs.mkdirSync(abaqusPath, { recursive: true });
+}
+
+function createRunFolders(data) {
+    const abaqusPath = path.join(__dirname, 'abaqus');
+    
+    // Get unique run numbers
+    const uniqueRuns = [...new Set(data.map(row => row.number_of_runs))];
+    
+    // Create folders for each unique run number
+    uniqueRuns.forEach(runNumber => {
+        const runPath = path.join(abaqusPath, runNumber.toString());
+        if (!fs.existsSync(runPath)) {
+            fs.mkdirSync(runPath, { recursive: true });
+        }
+    });
+}
+
+// Replace the existing store-excel-data endpoint with this modified version
 app.post('/api/store-excel-data', (req, res) => {
     const { data } = req.body;
     
@@ -252,6 +277,18 @@ app.post('/api/store-excel-data', (req, res) => {
         return res.status(400).json({
             success: false,
             message: 'Invalid data format'
+        });
+    }
+
+    // Clear and create Abaqus folders
+    try {
+        clearAbaqusFolder();
+        createRunFolders(data);
+    } catch (err) {
+        console.error('Error managing folders:', err);
+        return res.status(500).json({
+            success: false,
+            message: 'Error managing folders'
         });
     }
 
@@ -266,14 +303,13 @@ app.post('/api/store-excel-data', (req, res) => {
             });
         }
 
-        // Simple insert query without ON DUPLICATE KEY UPDATE
+        // Rest of the existing store-excel-data logic
         const insertQuery = `
             INSERT INTO mf_data 
             (number_of_runs, tests, ips, loads, ias, sa_range, sr_range, test_velocity)
             VALUES ?
         `;
 
-        // Convert data array to array of arrays for bulk insert
         const values = data.map(row => [
             row.number_of_runs,
             row.tests,
@@ -285,7 +321,6 @@ app.post('/api/store-excel-data', (req, res) => {
             row.test_velocity
         ]);
 
-        // Use bulk insert instead of multiple single inserts
         db.query(insertQuery, [values], (err, result) => {
             if (err) {
                 console.error('Error storing data:', err);
@@ -295,7 +330,6 @@ app.post('/api/store-excel-data', (req, res) => {
                 });
             }
 
-            console.log('Successfully inserted values in table mf_data');
             res.json({
                 success: true,
                 message: 'Data stored successfully'
