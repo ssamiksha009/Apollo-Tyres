@@ -66,27 +66,46 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     'L1': document.getElementById('l1').value.trim() || null,
                     'L2': document.getElementById('l2').value.trim() || null,
                     'L3': document.getElementById('l3').value.trim() || null,
-                    'V1': document.getElementById('v1').value.trim() || null,
-                    'V2': document.getElementById('v2').value.trim() || null,
-                    'V3': document.getElementById('v3').value.trim() || null,
-                    'V4': document.getElementById('v4').value.trim() || null,
-                    'IA': document.getElementById('ia').value.trim() || null,
-                    'SR': document.getElementById('sr').value.trim() || null
+                    'VEL': document.getElementById('vel').value.trim() || null,
                 };
+
+                const iaValue = document.getElementById('ia').value.trim();
+                const srValue = document.getElementById('sr').value.trim();
+                const saValue = document.getElementById('sa').value.trim();
 
                 // Create a new sheet while preserving all original data
                 const newSheet = jsonData.map(row => {
                     if (!Array.isArray(row)) return row;
-                    return row.map(cell => {
+                    return row.map((cell, columnIndex) => {
                         if (cell === null || cell === undefined) return cell;
                         
                         const cellStr = String(cell).trim();
-                        // Only process cells that exactly match our replacement keys
-                        if (replacements.hasOwnProperty(cellStr) && replacements[cellStr] !== null) {
-                            return replacements[cellStr];
+
+                        // Handle IA replacements
+                        if (cellStr === 'IA') {
+                            return iaValue;
                         }
-                        
-                        // Special handling for L1,L2,L3 case
+                        if (cellStr === '-IA') {
+                            return (-Math.abs(parseFloat(iaValue))).toString();
+                        }
+
+                        // Handle SR replacements
+                        if (cellStr === 'SR') {
+                            return srValue;
+                        }
+                        if (cellStr === '-SR') {
+                            return (-Math.abs(parseFloat(srValue))).toString();
+                        }
+
+                        // Handle SA replacements
+                        if (cellStr === 'SA') {
+                            return saValue;
+                        }
+                        if (cellStr === '-SA') {
+                            return (-Math.abs(parseFloat(saValue))).toString();
+                        }
+
+                        // Handle Load combinations
                         if (cellStr === 'L1,L2,L3' || 
                             (cellStr.includes('L1') && cellStr.includes('L2') && cellStr.includes('L3'))) {
                             const parts = cellStr.split(',');
@@ -95,6 +114,16 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                                 return replacements[trimmed] !== null ? replacements[trimmed] : trimmed;
                             });
                             return newParts.join(',');
+                        }
+                        
+                        // Handle Velocities
+                        if (cellStr.toLowerCase() === 'vel') {
+                            return replacements['VEL'];
+                        }
+
+                        // Handle other direct replacements
+                        if (replacements.hasOwnProperty(cellStr) && replacements[cellStr] !== null) {
+                            return replacements[cellStr];
                         }
                         
                         // Return original value for all other cells
@@ -139,42 +168,53 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     const worksheet = workbook.Sheets[sheetName];
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
                     
-                    // Find the header row that contains "Number Of Runs"
+                    // Find the header row that contains "Number Of Tests"
                     let headerRowIndex = -1;
                     for(let i = 0; i < jsonData.length; i++) {
                         const row = jsonData[i];
                         if(row && row.some(cell => 
                             cell && typeof cell === 'string' && 
-                            cell.toLowerCase().includes('number of runs'))) {
+                            cell === 'Number Of Tests')) {  // Changed to exact match
                             headerRowIndex = i;
                             break;
                         }
                     }
                     
-                    if (headerRowIndex === -1) return;
+                    if (headerRowIndex === -1) {
+                        console.error('Could not find header row with "Number Of Tests"');
+                        return;
+                    }
                     
                     const headerRow = jsonData[headerRowIndex];
                     const getColumnIndex = (header) => {
                         return headerRow.findIndex(col => 
                             col && typeof col === 'string' && 
-                            col.toLowerCase().includes(header.toLowerCase())
+                            col === header  // Changed to exact match
                         );
                     };
 
+                    // Update column mapping to exact header names
                     const columns = {
-                        runs: getColumnIndex('number of runs'),
-                        tests: getColumnIndex('tests'),
-                        ips: getColumnIndex('ips'),
-                        loads: getColumnIndex('loads'),
-                        ias: getColumnIndex('ias'),
-                        sa: getColumnIndex('sa range'),
-                        sr: getColumnIndex('sr range'),
-                        velocity: getColumnIndex('test velocity')
+                        runs: getColumnIndex('Number Of Tests'),
+                        tests: getColumnIndex('Tests'),
+                        ips: getColumnIndex('Inflation Pressure [PSI]'),
+                        loads: getColumnIndex('Loads[Kg]'),
+                        ias: getColumnIndex('Inclination Angle[°]'),
+                        sa: getColumnIndex('Slip Angle[°]'),
+                        sr: getColumnIndex('Slip Ratio [%]'),
+                        velocity: getColumnIndex('Test Velocity [Kmph]')
                     };
+
+                    // Debug log to check column indices
+                    console.log('Found columns:', columns);
 
                     // Verify all required columns were found
                     if (Object.values(columns).some(idx => idx === -1)) {
-                        console.error('Missing required columns:', columns);
+                        console.error('Missing required columns:', 
+                            Object.entries(columns)
+                                .filter(([key, value]) => value === -1)
+                                .map(([key]) => key)
+                        );
                         return;
                     }
 
@@ -221,40 +261,8 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     throw new Error(data.message || 'Error storing data');
                 }
 
-                // Update IA values first
-                const iaValue = parseFloat(document.getElementById('ia').value.trim());
-                return fetch('/api/update-ia-values', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ iaValue })
-                });
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    throw new Error(data.message || 'Error updating IA values');
-                }
-
-                // Then update SR values
-                const srValue = parseFloat(document.getElementById('sr').value.trim());
-                return fetch('/api/update-sr-values', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ srValue })
-                });
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    throw new Error(data.message || 'Error updating SR values');
-                }
-                // Update summary before redirect
+                // After storing data, directly redirect
                 updateTestSummary();
-                // Redirect to select.html after successful update
                 window.location.href = '/select.html';
             })
             .catch(error => {

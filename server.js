@@ -340,12 +340,18 @@ app.post('/api/store-excel-data', (req, res) => {
 
 // Update Excel file reading endpoint
 app.get('/api/read-protocol-excel', (req, res) => {
-    const filePath = path.join(__dirname, 'protocol', 'MF62.xlsx');
+    const protocolDir = path.join(__dirname, 'protocol');
+    const filePath = path.join(protocolDir, 'MF6pt2.xlsx');
+    
+    // Create protocol directory if it doesn't exist
+    if (!fs.existsSync(protocolDir)) {
+        fs.mkdirSync(protocolDir, { recursive: true });
+    }
     
     if (!fs.existsSync(filePath)) {
         return res.status(404).json({ 
             success: false, 
-            message: 'MF62.xlsx not found in protocol folder' 
+            message: 'MF6pt2.xlsx not found in protocol folder' 
         });
     }
 
@@ -398,151 +404,6 @@ app.get('/api/get-mf-data', (req, res) => {
             });
         }
         res.json(results);
-    });
-});
-
-// Add new endpoint for updating IA values
-app.post('/api/update-ia-values', (req, res) => {
-    const { iaValue } = req.body;
-    
-    if (!iaValue) {
-        return res.status(400).json({
-            success: false,
-            message: 'IA value is required'
-        });
-    }
-
-    // Update query that preserves signs and only updates non-zero values
-    const updateQuery = `
-        UPDATE mf_data 
-        SET ias = CASE
-            WHEN CAST(ias AS DECIMAL) > 0 THEN ?
-            WHEN CAST(ias AS DECIMAL) < 0 THEN ?
-            ELSE ias
-        END
-        WHERE ias IS NOT NULL AND ias != '0' AND ias != ''
-    `;
-
-    db.query(updateQuery, [
-        iaValue.toString(),             // For positive values
-        (-Math.abs(iaValue)).toString() // For negative values
-    ], (err, result) => {
-        if (err) {
-            console.error('Error updating IA values:', err);
-            return res.status(500).json({
-                success: false,
-                message: 'Error updating IA values'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'IA values updated successfully'
-        });
-    });
-});
-
-// Add new endpoint for updating IA and SR values
-app.post('/api/update-ia-sr-values', (req, res) => {
-    const { iaValue, srValue } = req.body;
-    
-    if (!iaValue || !srValue) {
-        return res.status(400).json({
-            success: false,
-            message: 'Both IA and SR values are required'
-        });
-    }
-
-    // Separate updates for IA and SR to avoid complex REGEXP
-    const updateQuery = `
-        UPDATE mf_data 
-        SET 
-        ias = CASE
-            WHEN CAST(REGEXP_REPLACE(ias, '[^-0-9.]', '') AS DECIMAL(10,2)) > 0 THEN ?
-            WHEN CAST(REGEXP_REPLACE(ias, '[^-0-9.]', '') AS DECIMAL(10,2)) < 0 THEN ?
-            ELSE ias
-        END,
-        sr_range = CASE
-            WHEN TRIM(sr_range) NOT IN ('0', '100', '', 'Fully Locked') 
-            AND sr_range IS NOT NULL
-            THEN
-                CASE
-                    WHEN LOCATE('-', sr_range) > 0 THEN ?
-                    ELSE ?
-                END
-            ELSE sr_range
-        END
-        WHERE (ias != '0' AND ias != '')
-        OR (sr_range NOT IN ('0', '100', '', 'Fully Locked') AND sr_range IS NOT NULL)
-    `;
-
-    db.query(updateQuery, [
-        iaValue.toString(),             // For positive IA values
-        (-Math.abs(iaValue)).toString(), // For negative IA values
-        (-Math.abs(srValue)).toString(), // For negative SR values
-        srValue.toString()              // For positive SR values
-    ], (err, result) => {
-        if (err) {
-            console.error('Error updating IA and SR values:', err);
-            return res.status(500).json({
-                success: false,
-                message: 'Error updating IA and SR values'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'IA and SR values updated successfully'
-        });
-    });
-});
-
-// Add new endpoint for updating SR values
-app.post('/api/update-sr-values', (req, res) => {
-    const { srValue } = req.body;
-    
-    if (!srValue) {
-        return res.status(400).json({
-            success: false,
-            message: 'SR value is required'
-        });
-    }
-
-    // Update query for SR values only
-    const updateQuery = `
-        UPDATE mf_data 
-        SET sr_range = CASE
-            WHEN sr_range REGEXP '^(0|100)\\s*\\(.*\\)$' THEN sr_range
-            WHEN sr_range NOT IN ('0', '100', '') 
-            AND sr_range IS NOT NULL
-            AND sr_range != 'Fully Locked'
-            AND sr_range != 'Free Rolling'
-            THEN
-                CASE
-                    WHEN LOCATE('-', sr_range) > 0 THEN ?
-                    ELSE ?
-                END
-            ELSE sr_range
-        END
-        WHERE sr_range IS NOT NULL
-    `;
-
-    db.query(updateQuery, [
-        (-Math.abs(srValue)).toString(), // For negative SR values
-        srValue.toString()               // For positive SR values
-    ], (err, result) => {
-        if (err) {
-            console.error('Error updating SR values:', err);
-            return res.status(500).json({
-                success: false,
-                message: 'Error updating SR values'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: 'SR values updated successfully'
-        });
     });
 });
 
