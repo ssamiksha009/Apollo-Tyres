@@ -25,6 +25,12 @@
     <main>
         <!-- Dropdown section -->
         <div class="dropdown-container">
+            <!-- Project Textbox -->
+            <div class="dropdown-group">
+                <label for="project">Project:</label>
+                <input type="text" id="project" name="project" placeholder="Enter Project" required>
+            </div>
+
             <!-- Region Dropdown -->
             <div class="dropdown-group">
                 <label for="region">Region:</label>
@@ -46,15 +52,10 @@
                 </select>
             </div>
             
-            <!-- Tyre Size Dropdown -->
+            <!-- Tyre Size Textbox -->
             <div class="dropdown-group">
                 <label for="tyreSize">Tyre Size:</label>
-                <select id="tyreSize" name="tyreSize" required>
-                    <option value="">Select Tyre Size</option>
-                    <option value="Small">Small</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Large">Large</option>
-                </select>
+                <input type="text" id="tyreSize" name="tyreSize" placeholder="Enter Tyre Size" required>
             </div>
             
             <!-- Protocol Dropdown -->
