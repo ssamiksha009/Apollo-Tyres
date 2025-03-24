@@ -429,6 +429,46 @@ app.get('/api/get-test-summary', (req, res) => {
     });
 });
 
+// Add new endpoint for generating parameter file
+app.post('/api/generate-parameters', (req, res) => {
+    try {
+        const data = req.body;
+        const templatePath = path.join(__dirname, 'parameters1.inc');
+        const outputPath = path.join(__dirname, 'parameters.inc');
+
+        // Read template file
+        let content = fs.readFileSync(templatePath, 'utf8');
+
+        // Replace values
+        content = content.replace('load1_kg=', `load1_kg=${data.load1_kg}`)
+                        .replace('load2_kg=', `load2_kg=${data.load2_kg}`)
+                        .replace('load3_kg=', `load3_kg=${data.load3_kg}`)
+                        .replace('pressure1=', `pressure1=${data.pressure1}`)
+                        .replace('pressure2=', `pressure2=${data.pressure2}`)
+                        .replace('pressure3=', `pressure3=${data.pressure3}`)
+                        .replace('speed_kmph=', `speed_kmph=${data.speed_kmph}`)
+                        .replace('IA=', `IA=${data.IA}`)
+                        .replace('SA=', `SA=${data.SA}`)
+                        .replace('SR=', `SR=${data.SR}`)
+                        .replace('width=', `width=${data.width}`)
+                        .replace('diameter=', `diameter=${data.diameter}`);
+
+        // Write new parameter file
+        fs.writeFileSync(outputPath, content);
+
+        res.json({
+            success: true,
+            message: 'Parameter file generated successfully'
+        });
+    } catch (err) {
+        console.error('Error generating parameter file:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Error generating parameter file'
+        });
+    }
+});
+
 // Serve the main application
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
