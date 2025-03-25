@@ -2,32 +2,94 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
     window.location.href = '/login.html';
 });
 
-// Fetch and display MF data when the page loads
-window.addEventListener('load', function() {
-    fetch('/api/get-mf-data')
+document.addEventListener('DOMContentLoaded', function() {
+    // Determine which data to fetch based on referrer
+    const referer = document.referrer;
+    const mf62Table = document.getElementById('mf62Table');
+    const mf52Table = document.getElementById('mf52Table');
+    let fetchEndpoint;
+
+    // Show appropriate table and hide other
+    if (referer.includes('mf52.html')) {
+        fetchEndpoint = '/api/get-mf52-data';
+        mf52Table.style.display = 'table';
+        mf62Table.style.display = 'none';
+    } else if (referer.includes('mf.html')) {
+        fetchEndpoint = '/api/get-mf-data';
+        mf62Table.style.display = 'table';
+        mf52Table.style.display = 'none';
+    } else {
+        document.getElementById('data-container').innerHTML = 
+            '<p class="error-message">Please select a protocol first</p>';
+        return;
+    }
+
+    // Fetch and display appropriate data
+    fetch(fetchEndpoint)
         .then(response => response.json())
         .then(data => {
-            const tableBody = document.getElementById('dataTableBody');
-            data.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${row.number_of_runs}</td>
-                    <td>${row.tests}</td>
-                    <td>${row.ips}</td>
-                    <td>${row.loads}</td>
-                    <td>${row.ias}</td>
-                    <td>${row.sa_range}</td>
-                    <td>${row.sr_range}</td>
-                    <td>${row.test_velocity}</td>
-                    <td class="status-cell">
-                        <span class="status-indicator">✕</span>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
+            if (referer.includes('mf52.html')) {
+                displayMF52Data(data);
+            } else {
+                displayMF62Data(data);
+            }
         })
-        .catch(error => console.error('Error loading data:', error));
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('data-container').innerHTML = 
+                '<p class="error-message">Error loading data</p>';
+        });
 });
+
+function displayMF62Data(data) {
+    const tableBody = document.getElementById('mf62TableBody');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = ''; // Clear existing data
+    
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${row.number_of_runs}</td>
+            <td>${row.tests}</td>
+            <td>${row.ips}</td>
+            <td>${row.loads}</td>
+            <td>${row.ias}</td>
+            <td>${row.sa_range}</td>
+            <td>${row.sr_range}</td>
+            <td>${row.test_velocity}</td>
+            <td class="status-cell">
+                <span class="status-indicator">✕</span>
+            </td>
+        `;
+        tableBody.appendChild(tr);
+    });
+}
+
+function displayMF52Data(data) {
+    const tableBody = document.getElementById('mf52TableBody');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = ''; // Clear existing data
+    
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${row.number_of_runs}</td>
+            <td>${row.tests}</td>
+            <td>${row.inflation_pressure}</td>
+            <td>${row.loads}</td>
+            <td>${row.inclination_angle}</td>
+            <td>${row.slip_angle}</td>
+            <td>${row.slip_ratio}</td>
+            <td>${row.test_velocity}</td>
+            <td class="status-cell">
+                <span class="status-indicator">✕</span>
+            </td>
+        `;
+        tableBody.appendChild(tr);
+    });
+}
 
 // Replace the Run button handler with simplified version
 document.getElementById('runBtn').addEventListener('click', function() {

@@ -98,6 +98,28 @@ db.connect(err => {
         }
         console.log('MF data table created successfully');
     });
+
+    // Add after existing table creations
+    const createMF52DataTable = `
+        CREATE TABLE IF NOT EXISTS mf52_data (
+            number_of_runs INT,
+            tests VARCHAR(255),
+            inflation_pressure VARCHAR(255),
+            loads VARCHAR(255),
+            inclination_angle VARCHAR(255),
+            slip_angle VARCHAR(255),
+            slip_ratio VARCHAR(255),
+            test_velocity VARCHAR(255)
+        )
+    `;
+
+    db.query(createMF52DataTable, (err) => {
+        if (err) {
+            console.error('Error creating mf52_data table:', err);
+            return;
+        }
+        console.log('MF 5.2 data table created successfully');
+    });
 });
 
 // Secret key for JWT
@@ -481,6 +503,75 @@ app.post('/api/generate-parameters', (req, res) => {
             message: 'Error generating parameter file'
         });
     }
+});
+
+// Add new endpoint for MF 5.2 data
+app.post('/api/store-mf52-data', (req, res) => {
+    const { data } = req.body;
+    
+    if (!Array.isArray(data) || !data.length) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid data format'
+        });
+    }
+
+    // First truncate the table
+    const truncateQuery = 'TRUNCATE TABLE mf52_data';
+    db.query(truncateQuery, (truncateErr) => {
+        if (truncateErr) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error clearing existing data'
+            });
+        }
+
+        const insertQuery = `
+            INSERT INTO mf52_data 
+            (number_of_runs, tests, inflation_pressure, loads, inclination_angle, 
+             slip_angle, slip_ratio, test_velocity)
+            VALUES ?
+        `;
+
+        const values = data.map(row => [
+            row.number_of_runs,
+            row.tests,
+            row.inflation_pressure,
+            row.loads,
+            row.inclination_angle,
+            row.slip_angle,
+            row.slip_ratio,
+            row.test_velocity
+        ]);
+
+        db.query(insertQuery, [values], (err) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Error storing data'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'Data stored successfully'
+            });
+        });
+    });
+});
+
+// Add endpoint to get MF 5.2 data
+app.get('/api/get-mf52-data', (req, res) => {
+    const query = 'SELECT * FROM mf52_data ORDER BY number_of_runs';
+    db.query(query, (err, results) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching data'
+            });
+        }
+        res.json(results);
+    });
 });
 
 // Serve the main application

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Select Data - Apollo Tyres R&D</title>
+    <title>Select - Apollo Tyres R&D</title>
     <link rel="stylesheet" href="/css/index.css">
     <link rel="stylesheet" href="/css/select.css">
 </head>
@@ -17,28 +17,50 @@
     </header>
     
     <main>
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Sequence Number</th>
-                    <th>Tests</th>
-                    <th>IPs</th>
-                    <th>Loads</th>
-                    <th>IAs</th>
-                    <th>Slip Angle</th>
-                    <th>Slip Ratio</th>
-                    <th>Velocity</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="dataTableBody">
-                <!-- Data will be inserted here dynamically -->
-            </tbody>
-        </table>
+        <div id="data-container">
+            <!-- For MF 6.2 Data -->
+            <table id="mf62Table" class="data-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Number of Tests</th>
+                        <th>Tests</th>
+                        <th>Inflation Pressure [PSI]</th>
+                        <th>Loads[Kg]</th>
+                        <th>Inclination Angle[°]</th>
+                        <th>Slip Angle[°]</th>
+                        <th>Slip Ratio [%]</th>
+                        <th>Test Velocity [Kmph]</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="mf62TableBody"></tbody>
+            </table>
+
+            <!-- For MF 5.2 Data -->
+            <table id="mf52Table" class="data-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Number Of Tests</th>
+                        <th>Tests</th>
+                        <th>Inflation Pressure [PSI]</th>
+                        <th>Loads[Kg]</th>
+                        <th>Inclination Angle[°]</th>
+                        <th>Slip Angle[°]</th>
+                        <th>Slip Ratio [%]</th>
+                        <th>Test Velocity [Kmph]</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="mf52TableBody"></tbody>
+            </table>
+        </div>
+
         <div class="button-container">
             <button id="runBtn" class="run-button">Run</button>
         </div>
     </main>
+    
+    <footer></footer>
 
     <script src="/js/select.js"></script>
 </body>
