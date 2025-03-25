@@ -338,12 +338,26 @@ app.post('/api/store-excel-data', (req, res) => {
     });
 });
 
-// Update Excel file reading endpoint
+// Update Excel file reading endpoint to be page-specific
 app.get('/api/read-protocol-excel', (req, res) => {
     const protocolDir = path.join(__dirname, 'protocol');
-    const filePath = path.join(protocolDir, 'MF6pt2.xlsx');
+    const referer = req.headers.referer || '';
+    let fileName;
+
+    // Determine which Excel file to use based on the page URL
+    if (referer.includes('mf52.html')) {
+        fileName = 'MF5pt2.xlsx';
+    } else if (referer.includes('mf.html')) {
+        fileName = 'MF6pt2.xlsx';
+    } else {
+        return res.status(400).json({
+            success: false,
+            message: 'Unknown protocol page'
+        });
+    }
+
+    const filePath = path.join(protocolDir, fileName);
     
-    // Create protocol directory if it doesn't exist
     if (!fs.existsSync(protocolDir)) {
         fs.mkdirSync(protocolDir, { recursive: true });
     }
@@ -351,7 +365,7 @@ app.get('/api/read-protocol-excel', (req, res) => {
     if (!fs.existsSync(filePath)) {
         return res.status(404).json({ 
             success: false, 
-            message: 'MF6pt2.xlsx not found in protocol folder' 
+            message: `${fileName} not found in protocol folder` 
         });
     }
 

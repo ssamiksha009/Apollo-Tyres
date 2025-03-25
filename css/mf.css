@@ -207,3 +207,38 @@ footer {
     color: #582C7C;
     margin-left: 10px;
 }
+
+/* File upload styling */
+.file-upload {
+    display: flex;
+    align-items: center;  /* Vertically center the input */
+    justify-content: center;
+    height: 100%;  /* Take full height of parent */
+}
+
+.file-upload input[type="file"] {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    width: 280px;  /* Increased width */
+    height: 40px;  /* Added explicit height */
+    margin-left: 20px;
+    font-size: 11px;  /* Further reduced font size from 12px */
+}
+
+.file-upload input[type="file"]::-webkit-file-upload-button {
+    background: #582C7C;
+    color: white;
+    padding: 8px 12px;  /* Increased padding */
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    width: 80px;
+    margin-right: 12px;  /* Add space after button */
+    font-size: 11px;  /* Further reduced font size from 12px */
+}
+
+.file-upload input[type="file"]::-webkit-file-upload-button:hover {
+    background: #4a2569;
+}

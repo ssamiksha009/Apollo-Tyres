@@ -16,11 +16,16 @@ document.getElementById('submitBtn').addEventListener('click', function() {
     // Clear any previous error messages
     errorMessage.textContent = '';
     
-    // If protocol is MF62, redirect to mf.html
-    if (protocol === 'MF62') {
-        window.location.href = 'mf.html';
-    } else {
-        // For other protocols, you could add different redirections or actions here
-        alert('Selected: ' + project + ', ' + region + ', ' + department + ', ' + tyreSize + ', ' + protocol);
+    // Handle different protocol redirections
+    switch(protocol) {
+        case 'MF62':
+            window.location.href = '/mf.html';
+            break;
+        case 'CDTire':
+            window.location.href = '/mf52.html';  // Changed redirection for MF 5.2
+            break;
+        default:
+            alert('Selected: ' + project + ', ' + region + ', ' + department + ', ' + tyreSize + ', ' + protocol);
+            break;
     }
 });
