@@ -120,6 +120,29 @@ db.connect(err => {
         }
         console.log('MF 5.2 data table created successfully');
     });
+
+    // Add FTire table creation with exact column names
+    const createFTireDataTable = `
+        CREATE TABLE IF NOT EXISTS ftire_data (
+            number_of_runs INT,
+            tests VARCHAR(255),
+            loads VARCHAR(255),
+            inflation_pressure VARCHAR(255),
+            test_velocity VARCHAR(255),
+            longitudinal_slip VARCHAR(255),
+            slip_angle VARCHAR(255),
+            inclination_angle VARCHAR(255),
+            cleat_orientation VARCHAR(255)
+        )
+    `;
+
+    db.query(createFTireDataTable, (err) => {
+        if (err) {
+            console.error('Error creating ftire_data table:', err);
+            return;
+        }
+        console.log('FTire data table created successfully');
+    });
 });
 
 // Secret key for JWT
@@ -366,8 +389,9 @@ app.get('/api/read-protocol-excel', (req, res) => {
     const referer = req.headers.referer || '';
     let fileName;
 
-    // Determine which Excel file to use based on the page URL
-    if (referer.includes('mf52.html')) {
+    if (referer.includes('ftire.html')) {
+        fileName = 'FTire.xlsx';
+    } else if (referer.includes('mf52.html')) {
         fileName = 'MF5pt2.xlsx';
     } else if (referer.includes('mf.html')) {
         fileName = 'MF6pt2.xlsx';
@@ -393,7 +417,6 @@ app.get('/api/read-protocol-excel', (req, res) => {
 
     fs.readFile(filePath, (err, data) => {
         if (err) {
-            console.error('Error reading Excel file:', err);
             return res.status(500).json({ 
                 success: false, 
                 message: 'Error reading Excel file' 
@@ -571,6 +594,94 @@ app.get('/api/get-mf52-data', (req, res) => {
             });
         }
         res.json(results);
+    });
+});
+
+// Add FTire data endpoints with correct columns
+app.post('/api/store-ftire-data', (req, res) => {
+    const { data } = req.body;
+    
+    if (!Array.isArray(data) || !data.length) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid data format'
+        });
+    }
+
+    const truncateQuery = 'TRUNCATE TABLE ftire_data';
+    db.query(truncateQuery, (truncateErr) => {
+        if (truncateErr) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error clearing existing data'
+            });
+        }
+
+        const insertQuery = `
+            INSERT INTO ftire_data 
+            (number_of_runs, tests, loads, inflation_pressure, test_velocity,
+             longitudinal_slip, slip_angle, inclination_angle, cleat_orientation)
+            VALUES ?
+        `;
+
+        const values = data.map(row => [
+            row.number_of_runs || 0,
+            row.tests || '',
+            row.loads || '',
+            row.inflation_pressure || '',
+            row.test_velocity || '',
+            row.longitudinal_slip || '',
+            row.slip_angle || '',
+            row.inclination_angle || '',
+            row.cleat_orientation || ''
+        ]);
+
+        db.query(insertQuery, [values], (err) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Error storing data'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'Data stored successfully'
+            });
+        });
+    });
+});
+
+app.get('/api/get-ftire-data', (req, res) => {
+    const query = 'SELECT * FROM ftire_data ORDER BY number_of_runs';
+    db.query(query, (err, results) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching data'
+            });
+        }
+        res.json(results);
+    });
+});
+
+app.get('/api/get-ftire-summary', (req, res) => {
+    const query = `
+        SELECT tests, COUNT(*) as count
+        FROM ftire_data
+        WHERE tests IS NOT NULL AND tests != ''
+        GROUP BY tests
+        ORDER BY count DESC
+    `;
+    
+    db.query(query, (err, results) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching test summary'
+            });
+        }
+        res.json(results || []); // Return empty array if no results
     });
 });
 

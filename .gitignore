@@ -3,3 +3,4 @@ package.json
 package-lock.json
 output.xlsx
 parameters.inc
+abaqus/*/

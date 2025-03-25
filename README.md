@@ -1,6 +1,11 @@
 Run npm init -y to create a package.json file
 Install required packages: npm install express mysql2 bcrypt jsonwebtoken
 For development: npm install nodemon --save-dev
+npm install express
+npm install mysql2
+npm install bcrypt
+npm install multer
+
 
 
 -- Create database (if it doesn't exist)
@@ -21,6 +26,4 @@ CREATE TABLE IF NOT EXISTS users (
 -- Note: The script in server.js will handle creating an admin user
 -- with email: admin@apollotyres.com and password: Apollo@123
 
-npm install multer
 
-npm install rimraf

@@ -21,8 +21,11 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         case 'MF62':
             window.location.href = '/mf.html';
             break;
-        case 'CDTire':
-            window.location.href = '/mf52.html';  // Changed redirection for MF 5.2
+        case 'MF52':
+            window.location.href = '/mf52.html';
+            break;
+        case 'FTire':
+            window.location.href = '/ftire.html';
             break;
         default:
             alert('Selected: ' + project + ', ' + region + ', ' + department + ', ' + tyreSize + ', ' + protocol);
