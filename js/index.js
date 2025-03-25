@@ -27,6 +27,9 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         case 'FTire':
             window.location.href = '/ftire.html';
             break;
+        case 'CDTire':
+            window.location.href = '/cdtire.html';
+            break;
         default:
             alert('Selected: ' + project + ', ' + region + ', ' + department + ', ' + tyreSize + ', ' + protocol);
             break;

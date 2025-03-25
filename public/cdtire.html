@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FTire - Apollo Tyres R&D</title>
+    <title>CDTire - Apollo Tyres R&D</title>
     <link rel="stylesheet" href="/css/index.css">
     <link rel="stylesheet" href="/css/mf.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
@@ -18,10 +18,11 @@
     </header>
     
     <main>
-        <h2 class="page-title">FTire</h2>
+        <h2 class="page-title">CDTire</h2>
         
+        <!-- Same input structure as FTire -->
         <div class="input-container">
-            <!-- Rim Width & Diameter -->
+            <!-- Rim Width Input -->
             <div class="input-group">
                 <h3>Rim Width</h3>
                 <div class="input-row">
@@ -35,16 +36,16 @@
                 </div>
             </div>
 
-            <!-- Pressure -->
+            <!-- Pressure Inputs -->
             <div class="input-group">
                 <h3>Pressure</h3>
                 <div class="input-row">
-                    <label for="p1">P:</label>
-                    <input type="text" id="p1" name="p1" placeholder="Enter pressure value in psi" pattern="[1-9][0-9]*(\.[0-9]+)?" required>
+                    <label for="p2">P:</label>
+                    <input type="text" id="p2" name="p2" placeholder="Enter pressure value in psi" pattern="[1-9][0-9]*(\.[0-9]+)?" required>
                 </div>
             </div>
 
-            <!-- Load -->
+            <!-- Load Inputs -->
             <div class="input-group">
                 <h3>Load</h3>
                 <div class="input-row">
@@ -59,9 +60,17 @@
                     <label for="l3">L3:</label>
                     <input type="text" id="l3" name="l3" placeholder="Enter L3 value in Kg" pattern="\d+(\.\d+)?" required>
                 </div>
+                <div class="input-row">
+                    <label for="l4">L4:</label>
+                    <input type="text" id="l4" name="l4" placeholder="Enter L4 value in Kg" pattern="\d+(\.\d+)?" required>
+                </div>
+                <div class="input-row">
+                    <label for="l5">L5:</label>
+                    <input type="text" id="l5" name="l5" placeholder="Enter L5 value in Kg" pattern="\d+(\.\d+)?" required>
+                </div>
             </div>
-            
-            <!-- Test Speed -->
+                        
+            <!-- Test Speed Input -->
             <div class="input-group">
                 <h3>Test Speed</h3>
                 <div class="input-row">
@@ -70,7 +79,7 @@
                 </div>
             </div>
 
-            <!-- Angles -->
+            <!-- Inclination Angle Input -->
             <div class="input-group">
                 <h3>Inclination Angle</h3>
                 <div class="input-row">
@@ -79,12 +88,8 @@
                 </div>
             </div>
 
+            <!-- Slip Angle Input -->
             <div class="input-group">
-                <h3>Slip Angle</h3>
-                <div class="input-row">
-                    <label for="sa">SA:</label>
-                    <input type="text" id="sa" name="sa" placeholder="Enter SA value in degree" pattern="\d+(\.\d+)?" required>
-                </div>
                 <h3>Slip Ratio</h3>
                 <div class="input-row">
                     <label for="sr">SR:</label>
@@ -92,7 +97,7 @@
                 </div>
             </div>
 
-            <!-- Mesh File Upload -->
+            <!-- Add Mesh File Upload before the Error Message Container -->
             <div class="input-group">
                 <h3>Mesh File</h3>
                 <div class="input-row file-upload">
@@ -115,6 +120,6 @@
     
     <footer></footer>
 
-    <script src="/js/ftire.js"></script>
+    <script src="/js/cdtire.js"></script>
 </body>
 </html>

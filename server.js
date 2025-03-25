@@ -143,6 +143,30 @@ db.connect(err => {
         }
         console.log('FTire data table created successfully');
     });
+
+    const createCDTireDataTable = `
+        CREATE TABLE IF NOT EXISTS cdtire_data (
+            number_of_runs INT,
+            test_name VARCHAR(255),
+            inflation_pressure VARCHAR(255),
+            velocity VARCHAR(255),
+            preload VARCHAR(255),
+            camber VARCHAR(255),
+            slip_angle VARCHAR(255),
+            displacement VARCHAR(255),
+            slip_range VARCHAR(255),
+            cleat VARCHAR(255),
+            road_surface VARCHAR(255)
+        )
+    `;
+
+    db.query(createCDTireDataTable, (err) => {
+        if (err) {
+            console.error('Error creating cdtire_data table:', err);
+            return;
+        }
+        console.log('CDTire data table created successfully');
+    });
 });
 
 // Secret key for JWT
@@ -395,6 +419,8 @@ app.get('/api/read-protocol-excel', (req, res) => {
         fileName = 'MF5pt2.xlsx';
     } else if (referer.includes('mf.html')) {
         fileName = 'MF6pt2.xlsx';
+    } else if (referer.includes('cdtire.html')) {
+        fileName = 'CDTire.xlsx';
     } else {
         return res.status(400).json({
             success: false,
@@ -676,6 +702,95 @@ app.get('/api/get-ftire-summary', (req, res) => {
     
     db.query(query, (err, results) => {
         if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching test summary'
+            });
+        }
+        res.json(results || []); // Return empty array if no results
+    });
+});
+
+app.post('/api/store-cdtire-data', (req, res) => {
+    const { data } = req.body;
+    
+    if (!Array.isArray(data) || !data.length) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid data format'
+        });
+    }
+
+    const truncateQuery = 'TRUNCATE TABLE cdtire_data';
+    db.query(truncateQuery, (truncateErr) => {
+        if (truncateErr) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error clearing existing data'
+            });
+        }
+
+        const insertQuery = `
+            INSERT INTO cdtire_data 
+            (number_of_runs, test_name, inflation_pressure, velocity, preload,
+             camber, slip_angle, displacement, slip_range, cleat, road_surface)
+            VALUES ?
+        `;
+
+        const values = data.map(row => [
+            row.number_of_runs || 0,
+            row.test_name || '',
+            row.inflation_pressure || '',
+            row.velocity || '',
+            row.preload || '',
+            row.camber || '',
+            row.slip_angle || '',
+            row.displacement || '',
+            row.slip_range || '',
+            row.cleat || '',
+            row.road_surface || ''
+        ]);
+
+        db.query(insertQuery, [values], (err) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Error storing data'
+                });
+            }
+            res.json({
+                success: true,
+                message: 'Data stored successfully'
+            });
+        });
+    });
+});
+
+app.get('/api/get-cdtire-data', (req, res) => {
+    const query = 'SELECT * FROM cdtire_data ORDER BY number_of_runs';
+    db.query(query, (err, results) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching data'
+            });
+        }
+        res.json(results);
+    });
+});
+
+app.get('/api/get-cdtire-summary', (req, res) => {
+    const query = `
+        SELECT test_name, COUNT(*) as count
+        FROM cdtire_data
+        WHERE test_name IS NOT NULL AND test_name != ''
+        GROUP BY test_name
+        ORDER BY count DESC
+    `;
+    
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching CDTire summary:', err);
             return res.status(500).json({
                 success: false,
                 message: 'Error fetching test summary'

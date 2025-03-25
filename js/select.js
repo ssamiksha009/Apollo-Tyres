@@ -7,12 +7,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const mf62Table = document.getElementById('mf62Table');
     const mf52Table = document.getElementById('mf52Table');
     const ftireTable = document.getElementById('ftireTable');
+    const cdtireTable = document.getElementById('cdtireTable');
     let fetchEndpoint;
 
     // Hide all tables first
     mf62Table.style.display = 'none';
     mf52Table.style.display = 'none';
     ftireTable.style.display = 'none';
+    cdtireTable.style.display = 'none';
 
     // Show appropriate table and set endpoint
     if (referer.includes('mf52.html')) {
@@ -24,6 +26,9 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (referer.includes('ftire.html')) { // Changed from 'FTire.html' to 'ftire.html'
         fetchEndpoint = '/api/get-ftire-data';
         ftireTable.style.display = 'table';
+    } else if (referer.includes('cdtire.html')) {
+        fetchEndpoint = '/api/get-cdtire-data';
+        cdtireTable.style.display = 'table';
     } else {
         document.getElementById('data-container').innerHTML = 
             '<p class="error-message">Please select a protocol first</p>';
@@ -40,6 +45,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 displayMF62Data(data);
             } else if (referer.includes('ftire.html')) {
                 displayFTireData(data);
+            } else if (referer.includes('cdtire.html')) {
+                displayCDTireData(data);
             }
         })
         .catch(error => {
@@ -120,6 +127,35 @@ function displayFTireData(data) {
             <td>${row.slip_angle}</td>
             <td>${row.inclination_angle}</td>
             <td>${row.cleat_orientation}</td>
+            <td class="status-cell">
+                <span class="status-indicator">✕</span>
+            </td>
+        `;
+        tableBody.appendChild(tr);
+    });
+}
+
+// Add new function to display CDTire data
+function displayCDTireData(data) {
+    const tableBody = document.getElementById('cdtireTableBody');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '';
+    
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${row.number_of_runs}</td>
+            <td>${row.test_name}</td>
+            <td>${row.inflation_pressure}</td>
+            <td>${row.velocity}</td>
+            <td>${row.preload}</td>
+            <td>${row.camber}</td>
+            <td>${row.slip_angle}</td>
+            <td>${row.displacement}</td>
+            <td>${row.slip_range}</td>
+            <td>${row.cleat}</td>
+            <td>${row.road_surface}</td>
             <td class="status-cell">
                 <span class="status-indicator">✕</span>
             </td>
