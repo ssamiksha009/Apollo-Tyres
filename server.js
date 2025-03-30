@@ -513,45 +513,7 @@ app.get('/api/get-test-summary', (req, res) => {
     });
 });
 
-// Add new endpoint for generating parameter file
-app.post('/api/generate-parameters', (req, res) => {
-    try {
-        const data = req.body;
-        const templatePath = path.join(__dirname, 'parameters1.inc');
-        const outputPath = path.join(__dirname, 'parameters.inc');
 
-        // Read template file
-        let content = fs.readFileSync(templatePath, 'utf8');
-
-        // Replace values
-        content = content.replace('load1_kg=', `load1_kg=${data.load1_kg}`)
-                        .replace('load2_kg=', `load2_kg=${data.load2_kg}`)
-                        .replace('load3_kg=', `load3_kg=${data.load3_kg}`)
-                        .replace('pressure1=', `pressure1=${data.pressure1}`)
-                        .replace('pressure2=', `pressure2=${data.pressure2}`)
-                        .replace('pressure3=', `pressure3=${data.pressure3}`)
-                        .replace('speed_kmph=', `speed_kmph=${data.speed_kmph}`)
-                        .replace('IA=', `IA=${data.IA}`)
-                        .replace('SA=', `SA=${data.SA}`)
-                        .replace('SR=', `SR=${data.SR}`)
-                        .replace('width=', `width=${data.width}`)
-                        .replace('diameter=', `diameter=${data.diameter}`);
-
-        // Write new parameter file
-        fs.writeFileSync(outputPath, content);
-
-        res.json({
-            success: true,
-            message: 'Parameter file generated successfully'
-        });
-    } catch (err) {
-        console.error('Error generating parameter file:', err);
-        res.status(500).json({
-            success: false,
-            message: 'Error generating parameter file'
-        });
-    }
-});
 
 // Add new endpoint for MF 5.2 data
 app.post('/api/store-mf52-data', (req, res) => {
@@ -847,6 +809,72 @@ app.post('/api/create-project-folders', (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error creating folders'
+        });
+    }
+});
+
+app.post('/api/generate-parameters', (req, res) => {
+    try {
+        const referer = req.headers.referer || '';
+        let templatePath;
+
+        // Select template based on protocol page
+        if (referer.includes('mf.html')) {
+            templatePath = path.join(__dirname, 'abaqus', 'mf62.inc');
+        } else if (referer.includes('mf52.html')) {
+            templatePath = path.join(__dirname, 'abaqus', 'mf52.inc');
+        } else if (referer.includes('ftire.html')) {
+            templatePath = path.join(__dirname, 'abaqus', 'ftire.inc');
+        } else if (referer.includes('cdtire.html')) {
+            templatePath = path.join(__dirname, 'abaqus', 'cdtire.inc');
+        } else {
+            throw new Error('Unknown protocol');
+        }
+
+        const outputPath = path.join(__dirname, 'abaqus', 'parameters.inc');
+        
+        // Read template file
+        let content = fs.readFileSync(templatePath, 'utf8');
+        
+        // Replace parameter values, being careful with line matching
+        const data = req.body;
+        const replacements = {
+            '^load1_kg=': `load1_kg=${data.load1_kg || ''}`,
+            '^load2_kg=': `load2_kg=${data.load2_kg || ''}`,
+            '^load3_kg=': `load3_kg=${data.load3_kg || ''}`,
+            '^load4_kg=': `load4_kg=${data.load4_kg || ''}`,
+            '^load5_kg=': `load5_kg=${data.load5_kg || ''}`,
+            '^pressure1=': `pressure1=${data.pressure1 || ''}`,
+            '^pressure2=': `pressure2=${data.pressure2 || ''}`,
+            '^pressure3=': `pressure3=${data.pressure3 || ''}`,
+            '^speed_kmph=': `speed_kmph=${data.speed_kmph || ''}`,
+            '^IA=': `IA=${data.IA || ''}`,
+            '^SA=': `SA=${data.SA || ''}`,
+            '^SR=': `SR=${data.SR || ''}`,
+            '^width=': `width=${data.width || ''}`,
+            '^diameter=': `diameter=${data.diameter || ''}`
+        };
+
+        // Replace each parameter if it exists in the template with exact line start matching
+        Object.entries(replacements).forEach(([key, value]) => {
+            const regex = new RegExp(key + '.*', 'm');
+            if (content.match(regex)) {
+                content = content.replace(regex, value);
+            }
+        });
+
+        // Write new parameter file
+        fs.writeFileSync(outputPath, content);
+
+        res.json({
+            success: true,
+            message: 'Parameter file generated successfully'
+        });
+    } catch (err) {
+        console.error('Error generating parameter file:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Error generating parameter file'
         });
     }
 });

@@ -20,14 +20,11 @@ function updateTestSummary() {
 window.addEventListener('load', updateTestSummary);
 
 document.getElementById('submitBtn').addEventListener('click', function() {
-    // ...existing validation code from mf.js...
-
-    // Get all input values
     const parameterData = {
         load1_kg: document.getElementById('l1').value,
         load2_kg: document.getElementById('l2').value,
         load3_kg: document.getElementById('l3').value,
-        pressure: document.getElementById('p2').value,
+        pressure2: document.getElementById('p2').value,  // Changed from pressure to pressure2
         speed_kmph: document.getElementById('vel').value,
         IA: document.getElementById('ia').value,
         SA: document.getElementById('sa').value,
@@ -63,7 +60,7 @@ document.getElementById('submitBtn').addEventListener('click', function() {
             
             // Replace values in the sheet
             const replacements = {
-                'P2': document.getElementById('p2').value.trim() || null,  // Changed from 'P' to 'P2'
+                'P2': document.getElementById('p2').value.trim() || null,  // Match Excel P2
                 'L1': document.getElementById('l1').value.trim() || null,
                 'L2': document.getElementById('l2').value.trim() || null,
                 'L3': document.getElementById('l3').value.trim() || null,
