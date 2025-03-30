@@ -165,6 +165,65 @@ function displayCDTireData(data) {
 }
 
 document.getElementById('runBtn').addEventListener('click', function() {
-    // TODO: Add functionality for what happens when Run is clicked
-    console.log('Run button clicked');
+    const projectName = sessionStorage.getItem('currentProject');
+    if (!projectName) {
+        window.location.href = '/index.html';
+        return;
+    }
+
+    // Clear any previous folders
+    fetch('/api/clear-folders', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ projectName })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) throw new Error(data.message);
+
+        // Get table data based on current protocol
+        const currentTableId = document.querySelector('table[style*="display: table"]').id;
+        let endpoint;
+        switch (currentTableId) {
+            case 'mf62Table':
+                endpoint = '/api/get-mf-data';
+                break;
+            case 'mf52Table':
+                endpoint = '/api/get-mf52-data';
+                break;
+            case 'ftireTable':
+                endpoint = '/api/get-ftire-data';
+                break;
+            case 'cdtireTable':
+                endpoint = '/api/get-cdtire-data';
+                break;
+            default:
+                throw new Error('Unknown protocol');
+        }
+
+        return fetch(endpoint);
+    })
+    .then(response => response.json())
+    .then(data => {
+        return fetch('/api/create-project-folders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                projectName,
+                protocol: document.querySelector('table[style*="display: table"]').id.replace('Table', ''),
+                data
+            })
+        });
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) throw new Error(data.message);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
 });

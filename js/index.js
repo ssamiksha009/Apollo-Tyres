@@ -16,6 +16,9 @@ document.getElementById('submitBtn').addEventListener('click', function() {
     // Clear any previous error messages
     errorMessage.textContent = '';
     
+    // Store project name in sessionStorage before redirecting
+    sessionStorage.setItem('currentProject', project);
+    
     // Handle different protocol redirections
     switch(protocol) {
         case 'MF62':

@@ -173,7 +173,6 @@ db.connect(err => {
 const JWT_SECRET = 'apollo-tyres-secret-key'; // In production, use environment variable
 
 
-// ...existing code...
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/css', express.static(path.join(__dirname, 'css')));
 app.use('/css', express.static(path.join(__dirname, 'css')));
@@ -798,6 +797,58 @@ app.get('/api/get-cdtire-summary', (req, res) => {
         }
         res.json(results || []); // Return empty array if no results
     });
+});
+
+// Add new endpoints for folder management
+app.post('/api/clear-folders', (req, res) => {
+    const { projectName } = req.body;
+    const projectPath = path.join(__dirname, 'abaqus', projectName);
+    
+    try {
+        if (fs.existsSync(projectPath)) {
+            rimraf.sync(projectPath);
+        }
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: 'Error clearing folders'
+        });
+    }
+});
+
+app.post('/api/create-project-folders', (req, res) => {
+    const { projectName, protocol, data } = req.body;
+    const projectPath = path.join(__dirname, 'abaqus', projectName);
+    const protocolPath = path.join(projectPath, protocol);
+
+    try {
+        // Create project and protocol folders
+        if (!fs.existsSync(projectPath)) {
+            fs.mkdirSync(projectPath, { recursive: true });
+        }
+        if (!fs.existsSync(protocolPath)) {
+            fs.mkdirSync(protocolPath, { recursive: true });
+        }
+
+        // Create run number folders
+        data.forEach(row => {
+            const runPath = path.join(protocolPath, row.number_of_runs.toString());
+            if (!fs.existsSync(runPath)) {
+                fs.mkdirSync(runPath, { recursive: true });
+            }
+        });
+
+        res.json({
+            success: true,
+            message: 'Folders created successfully'
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: 'Error creating folders'
+        });
+    }
 });
 
 // Serve the main application
