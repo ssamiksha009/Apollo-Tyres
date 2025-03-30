@@ -2,6 +2,8 @@
     width: 100%;
     border-collapse: collapse;
     margin: 20px 0;
+    flex: 1;
+    margin-right: 0;  /* Remove right margin since we have gap */
 }
 
 .data-table th, .data-table td {
@@ -66,3 +68,53 @@
 }
 
 /* Remove checkbox styling classes */
+
+.run-button-cell {
+    padding: 5px;
+    text-align: center;
+}
+
+.row-run-btn {
+    padding: 4px 12px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    height: 32px;  /* Match table row height */
+    white-space: nowrap;
+}
+
+.row-run-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.row-run-btn:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+/* Add table container styles */
+.table-container {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    width: 100%;
+    overflow-x: auto;
+}
+
+.run-buttons-column {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 45px 10px 0 0;  /* Top padding to align with table rows */
+}
+
+.protocol-title {
+    text-align: center;
+    font-size: 24px;
+    color: #582C7C;
+    margin: 20px 0;
+    font-weight: bold;
+}

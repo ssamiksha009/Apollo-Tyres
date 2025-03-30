@@ -2,6 +2,47 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
     window.location.href = '/login.html';
 });
 
+function updateStatusIndicators() {
+    const projectName = sessionStorage.getItem('currentProject');
+    if (!projectName) return;
+
+    const protocol = document.querySelector('table[style*="display: table"]').id.replace('Table', '');
+    const rows = document.querySelectorAll('tbody tr');
+
+    rows.forEach(row => {
+        const runNumber = row.cells[0].textContent;
+        const statusCell = row.querySelector('.status-indicator');
+        const runButton = document.querySelector(`.row-run-btn[data-run="${runNumber}"]`);
+        
+        fetch(`/api/check-analysis-status?projectName=${projectName}&protocol=${protocol}&run=${runNumber}`)
+            .then(response => response.json())
+            .then(data => {
+                // Update status indicator
+                switch(data.status) {
+                    case "Completed":
+                        statusCell.textContent = 'Completed ✓';
+                        statusCell.style.color = '#28a745';
+                        if (runButton) runButton.style.display = 'none';
+                        break;
+                    case "Running":
+                        statusCell.textContent = 'Running ⌛';
+                        statusCell.style.color = '#ffc107';
+                        if (runButton) runButton.style.display = 'none';
+                        break;
+                    case "Error":
+                        statusCell.textContent = 'Error ✕';
+                        statusCell.style.color = '#dc3545';
+                        if (runButton) runButton.style.display = 'block';
+                        break;
+                    default:
+                        statusCell.textContent = 'Not started ✕';
+                        statusCell.style.color = '#dc3545';
+                        if (runButton) runButton.style.display = 'block';
+                }
+            });
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const referer = document.referrer;
     const mf62Table = document.getElementById('mf62Table');
@@ -35,6 +76,18 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    // Set protocol title based on referer
+    const protocolTitle = document.getElementById('protocol-title');
+    if (referer.includes('mf52.html')) {
+        protocolTitle.textContent = 'MF 5.2 Protocol';
+    } else if (referer.includes('mf.html')) {
+        protocolTitle.textContent = 'MF 6.2 Protocol';
+    } else if (referer.includes('ftire.html')) {
+        protocolTitle.textContent = 'FTire Protocol';
+    } else if (referer.includes('cdtire.html')) {
+        protocolTitle.textContent = 'CDTire Protocol';
+    }
+
     // Fetch and display appropriate data
     fetch(fetchEndpoint)
         .then(response => response.json())
@@ -48,6 +101,8 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (referer.includes('cdtire.html')) {
                 displayCDTireData(data);
             }
+            // Update status indicators after displaying data
+            updateStatusIndicators();
         })
         .catch(error => {
             console.error('Error:', error);
@@ -55,6 +110,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 '<p class="error-message">Error loading data</p>';
         });
 });
+
+// Add event listener for page visibility changes
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+        updateStatusIndicators();
+    }
+});
+
+function createRunButton(runNumber) {
+    // Initially create all buttons but hidden
+    return `<button class="row-run-btn" data-run="${runNumber}" style="display: none">Run</button>`;
+}
 
 function displayMF62Data(data) {
     const tableBody = document.getElementById('mf62TableBody');
@@ -74,10 +141,22 @@ function displayMF62Data(data) {
             <td>${row.sr_range}</td>
             <td>${row.test_velocity}</td>
             <td class="status-cell">
-                <span class="status-indicator">✕</span>
+                <span class="status-indicator">Not started ✕</span>
+            </td>
+            <td class="run-button-cell">
+                ${createRunButton(row.number_of_runs)}
             </td>
         `;
         tableBody.appendChild(tr);
+    });
+
+    // Add event listeners to run buttons
+    document.querySelectorAll('.row-run-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const runNumber = this.getAttribute('data-run');
+            runSingleAnalysis(runNumber);
+        });
     });
 }
 
@@ -99,14 +178,25 @@ function displayMF52Data(data) {
             <td>${row.slip_ratio}</td>
             <td>${row.test_velocity}</td>
             <td class="status-cell">
-                <span class="status-indicator">✕</span>
+                <span class="status-indicator">Not started ✕</span>
+            </td>
+            <td class="run-button-cell">
+                ${createRunButton(row.number_of_runs)}
             </td>
         `;
         tableBody.appendChild(tr);
     });
+
+    // Add event listeners to run buttons
+    document.querySelectorAll('.row-run-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const runNumber = this.getAttribute('data-run');
+            runSingleAnalysis(runNumber);
+        });
+    });
 }
 
-// Add new function to display FTire data
 function displayFTireData(data) {
     const tableBody = document.getElementById('ftireTableBody');
     if (!tableBody) return;
@@ -128,14 +218,25 @@ function displayFTireData(data) {
             <td>${row.inclination_angle}</td>
             <td>${row.cleat_orientation}</td>
             <td class="status-cell">
-                <span class="status-indicator">✕</span>
+                <span class="status-indicator">Not started ✕</span>
+            </td>
+            <td class="run-button-cell">
+                ${createRunButton(row.number_of_runs)}
             </td>
         `;
         tableBody.appendChild(tr);
     });
+
+    // Add event listeners to run buttons
+    document.querySelectorAll('.row-run-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const runNumber = this.getAttribute('data-run');
+            runSingleAnalysis(runNumber);
+        });
+    });
 }
 
-// Add new function to display CDTire data
 function displayCDTireData(data) {
     const tableBody = document.getElementById('cdtireTableBody');
     if (!tableBody) return;
@@ -157,11 +258,78 @@ function displayCDTireData(data) {
             <td>${row.cleat}</td>
             <td>${row.road_surface}</td>
             <td class="status-cell">
-                <span class="status-indicator">✕</span>
+                <span class="status-indicator">Not started ✕</span>
+            </td>
+            <td class="run-button-cell">
+                ${createRunButton(row.number_of_runs)}
             </td>
         `;
         tableBody.appendChild(tr);
     });
+
+    // Add event listeners to run buttons
+    document.querySelectorAll('.row-run-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const runNumber = this.getAttribute('data-run');
+            runSingleAnalysis(runNumber);
+        });
+    });
+}
+
+function runSingleAnalysis(runNumber) {
+    const projectName = sessionStorage.getItem('currentProject');
+    if (!projectName) {
+        window.location.href = '/index.html';
+        return;
+    }
+
+    const protocol = document.querySelector('table[style*="display: table"]').id.replace('Table', '');
+    
+    // Find the status indicator for this run
+    const row = document.querySelector(`tr:has(button[data-run="${runNumber}"])`);
+    const statusCell = row.querySelector('.status-indicator');
+    const runButton = row.querySelector('.row-run-btn');
+
+    // Update status to running
+    statusCell.textContent = 'Running ⌛';
+    statusCell.style.color = '#ffc107';
+    runButton.disabled = true;
+
+    // Start analysis for this run only
+    fetch('/api/run-abaqus-jobs', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            projectName,
+            protocol,
+            runNumber  // Add run number to identify which run to process
+        })
+    });
+
+    // Poll for status updates for this specific run
+    const pollStatus = setInterval(() => {
+        fetch(`/api/check-analysis-status?projectName=${projectName}&protocol=${protocol}&run=${runNumber}`)
+            .then(response => response.json())
+            .then(data => {
+                switch(data.status) {
+                    case "Completed":
+                        statusCell.textContent = 'Completed ✓';
+                        statusCell.style.color = '#28a745';
+                        runButton.remove();  // Remove run button when completed
+                        clearInterval(pollStatus);
+                        break;
+                    case "Error":
+                        statusCell.textContent = 'Error ✕';
+                        statusCell.style.color = '#dc3545';
+                        runButton.disabled = false;  // Re-enable button on error
+                        clearInterval(pollStatus);
+                        break;
+                }
+            });
+    }, 5000);
 }
 
 document.getElementById('runBtn').addEventListener('click', function() {
@@ -171,59 +339,52 @@ document.getElementById('runBtn').addEventListener('click', function() {
         return;
     }
 
-    // Clear any previous folders
-    fetch('/api/clear-folders', {
+    const protocol = document.querySelector('table[style*="display: table"]').id.replace('Table', '');
+    const rows = document.querySelectorAll('tbody tr');
+    const statusIndicators = {};
+
+    // Create a map of run numbers to status indicators
+    rows.forEach(row => {
+        const runNumber = row.cells[0].textContent;
+        statusIndicators[runNumber] = row.querySelector('.status-indicator');
+    });
+
+    // First check for already completed analyses
+    Object.entries(statusIndicators).forEach(([runNumber, indicator]) => {
+        fetch(`/api/check-analysis-status?projectName=${projectName}&protocol=${protocol}&run=${runNumber}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "Completed") {
+                    indicator.textContent = 'Completed ✓';
+                    indicator.style.color = '#28a745';
+                }
+            });
+    });
+
+    // Start Abaqus analysis
+    fetch('/api/run-abaqus-jobs', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ projectName })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (!data.success) throw new Error(data.message);
-
-        // Get table data based on current protocol
-        const currentTableId = document.querySelector('table[style*="display: table"]').id;
-        let endpoint;
-        switch (currentTableId) {
-            case 'mf62Table':
-                endpoint = '/api/get-mf-data';
-                break;
-            case 'mf52Table':
-                endpoint = '/api/get-mf52-data';
-                break;
-            case 'ftireTable':
-                endpoint = '/api/get-ftire-data';
-                break;
-            case 'cdtireTable':
-                endpoint = '/api/get-cdtire-data';
-                break;
-            default:
-                throw new Error('Unknown protocol');
-        }
-
-        return fetch(endpoint);
-    })
-    .then(response => response.json())
-    .then(data => {
-        return fetch('/api/create-project-folders', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                projectName,
-                protocol: document.querySelector('table[style*="display: table"]').id.replace('Table', ''),
-                data
-            })
-        });
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (!data.success) throw new Error(data.message);
-    })
-    .catch(error => {
-        console.error('Error:', error);
+        body: JSON.stringify({
+            projectName,
+            protocol
+        })
     });
+
+    // Start polling for status updates
+    const pollStatus = setInterval(() => {
+        updateStatusIndicators();
+        
+        // Check if all runs are completed or errored
+        const allDone = Array.from(document.querySelectorAll('.status-indicator')).every(ind => 
+            ind.textContent.includes('Completed') || 
+            ind.textContent.includes('Error')
+        );
+        
+        if (allDone) {
+            clearInterval(pollStatus);
+        }
+    }, 5000); // Poll every 5 seconds
 });

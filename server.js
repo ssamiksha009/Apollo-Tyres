@@ -6,6 +6,7 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const rimraf = require('rimraf');  // Add this at the top with other requires
+const { spawn } = require('child_process'); // Add this at the top with other requires
 
 // Create express app
 const app = express();
@@ -867,34 +868,46 @@ app.post('/api/clear-folders', (req, res) => {
 
 app.post('/api/create-project-folders', (req, res) => {
     const { projectName, protocol, data } = req.body;
-    const combinedFolderName = `${projectName}_${protocol}`;  // Combine project and protocol names
-    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
-
+    
     try {
-        // Create single combined folder
+        const combinedFolderName = `${projectName}_${protocol}`;
+        const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
+
+        // Create base project folder
         if (!fs.existsSync(projectPath)) {
             fs.mkdirSync(projectPath, { recursive: true });
         }
 
-        // Create run folders and copy files
+        // Create run folders
         data.forEach(row => {
             const runPath = path.join(projectPath, row.number_of_runs.toString());
             if (!fs.existsSync(runPath)) {
                 fs.mkdirSync(runPath, { recursive: true });
-                copyProtocolFiles(runPath);
-                generateRowSpecificInp(row, protocol, runPath);
+                
+                // Copy required files
+                const sourceFiles = [
+                    'parameters.inc',
+                    'tiretransfer_node.inp',
+                    'tiretransfer_axi_half.inp',
+                    'tiretransfer_symmetric.inp',
+                    'tiretransfer_full.inp',
+                    'rollingtire_brake_trac.inp',
+                    'rollingtire_brake_trac1.inp',
+                    'rollingtire_freeroll.inp'
+                ];
+
+                sourceFiles.forEach(file => {
+                    const sourcePath = path.join(__dirname, 'abaqus', file);
+                    fs.existsSync(sourcePath) && fs.copyFileSync(sourcePath, path.join(runPath, file));
+                });
             }
         });
 
-        res.json({
-            success: true,
-            message: 'Folders and files created successfully'
-        });
+        res.json({ success: true, message: 'Project folders created successfully' });
     } catch (err) {
-        console.error('Error:', err);
         res.status(500).json({
             success: false,
-            message: 'Error creating folders and files'
+            message: 'Error creating project folders: ' + err.message
         });
     }
 });
@@ -961,6 +974,94 @@ app.post('/api/generate-parameters', (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Error generating parameter file'
+        });
+    }
+});
+
+// Add new endpoint for checking analysis status
+app.get('/api/check-analysis-status', (req, res) => {
+    const { projectName, protocol, run } = req.query;
+    const combinedFolderName = `${projectName}_${protocol}`;
+    const runPath = path.join(__dirname, 'abaqus', combinedFolderName, run);
+    const statusFile = path.join(runPath, 'analysis_status.txt');
+
+    try {
+        if (fs.existsSync(statusFile)) {
+            const status = fs.readFileSync(statusFile, 'utf8').trim();
+            res.json({ status });
+        } else {
+            res.json({ status: 'Not started' });
+        }
+    } catch (err) {
+        res.json({ status: 'Error' });
+    }
+});
+
+app.post('/api/run-abaqus-jobs', (req, res) => {
+    const { projectName, protocol, runNumber } = req.body;
+    const combinedFolderName = `${projectName}_${protocol}`;
+    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
+    const pythonScript = path.join(__dirname, 'scripts', 'run_abaqus.py');
+
+    try {
+        if (!fs.existsSync(projectPath)) {
+            return res.status(404).json({
+                success: false,
+                message: 'Project folder not found'
+            });
+        }
+
+        const args = [pythonScript, projectPath];
+        if (runNumber) {
+            args.push(runNumber);
+            
+            // Create status file immediately
+            const statusFile = path.join(projectPath, runNumber, 'analysis_status.txt');
+            fs.writeFileSync(statusFile, 'Running');
+        }
+
+        // Run Python script with error handling
+        const pythonProcess = spawn('python', args, {
+            shell: true,
+            detached: true
+        });
+
+        // Handle process errors and termination
+        pythonProcess.on('error', (err) => {
+            console.error('Python process error:', err);
+            if (runNumber) {
+                const statusFile = path.join(projectPath, runNumber, 'analysis_status.txt');
+                fs.writeFileSync(statusFile, 'Error');
+            }
+        });
+
+        pythonProcess.on('exit', (code) => {
+            if (code !== 0 && runNumber) {
+                const statusFile = path.join(projectPath, runNumber, 'analysis_status.txt');
+                fs.writeFileSync(statusFile, 'Error');
+            }
+        });
+
+        pythonProcess.unref();
+
+        res.json({
+            success: true,
+            message: 'Analysis started'
+        });
+
+    } catch (err) {
+        console.error('Error launching process:', err);
+        if (runNumber) {
+            const statusFile = path.join(projectPath, runNumber, 'analysis_status.txt');
+            try {
+                fs.writeFileSync(statusFile, 'Error');
+            } catch (writeErr) {
+                console.error('Error writing status file:', writeErr);
+            }
+        }
+        res.status(500).json({
+            success: false,
+            message: 'Error launching process: ' + err.message
         });
     }
 });
