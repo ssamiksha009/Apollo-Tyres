@@ -337,6 +337,91 @@ function createRunFolders(data) {
     });
 }
 
+// Add new utility function after existing ones
+function copyProtocolFiles(runPath) {
+    const files = [
+        'parameters.inc',
+        'rollingtire_brake_trac.inp',
+        'rollingtire_brake_trac1.inp',
+        'rollingtire_freeroll.inp',
+        'tiretransfer_axi_half.inp',
+        'tiretransfer_full.inp',
+        'tiretransfer_node.inp',
+        'tiretransfer_symmetric.inp'
+    ];
+
+    try {
+        files.forEach(file => {
+            const source = path.join(__dirname, 'abaqus', file);
+            const dest = path.join(runPath, file);
+            if (fs.existsSync(source)) {
+                fs.copyFileSync(source, dest);
+            }
+        });
+        return true;
+    } catch (err) {
+        console.error('Error copying files:', err);
+        return false;
+    }
+}
+
+// Add new utility function
+function generateRowSpecificInp(row, protocol, runPath) {
+    try {
+        let inpContent = '** Row Specific Data\n';
+        inpContent += '** Generated for Protocol: ' + protocol + '\n';
+        inpContent += '** Run Number: ' + row.number_of_runs + '\n\n';
+
+        // Add row data based on protocol
+        switch(protocol.toLowerCase()) {
+            case 'mf62':
+                inpContent += `*inflation_pressure = ${row.ips || ''}\n`;
+                inpContent += `*loads = ${row.loads || ''}\n`;
+                inpContent += `*inclination_angle = ${row.ias || ''}\n`;
+                inpContent += `*slip_angle = ${row.sa_range || ''}\n`;
+                inpContent += `*slip_ratio = ${row.sr_range || ''}\n`;
+                inpContent += `*velocity = ${row.test_velocity || ''}\n`;
+                break;
+            case 'mf52':
+                inpContent += `*inflation_pressure = ${row.inflation_pressure || ''}\n`;
+                inpContent += `*loads = ${row.loads || ''}\n`;
+                inpContent += `*inclination_angle = ${row.inclination_angle || ''}\n`;
+                inpContent += `*slip_angle = ${row.slip_angle || ''}\n`;
+                inpContent += `*slip_ratio = ${row.slip_ratio || ''}\n`;
+                inpContent += `*velocity = ${row.test_velocity || ''}\n`;
+                break;
+            case 'ftire':
+                inpContent += `*loads = ${row.loads || ''}\n`;
+                inpContent += `*inflation_pressure = ${row.inflation_pressure || ''}\n`;
+                inpContent += `*velocity = ${row.test_velocity || ''}\n`;
+                inpContent += `*longitudinal_slip = ${row.longitudinal_slip || ''}\n`;
+                inpContent += `*slip_angle = ${row.slip_angle || ''}\n`;
+                inpContent += `*inclination_angle = ${row.inclination_angle || ''}\n`;
+                inpContent += `*cleat_orientation = ${row.cleat_orientation || ''}\n`;
+                break;
+            case 'cdtire':
+                inpContent += `*test_name = ${row.test_name || ''}\n`;
+                inpContent += `*inflation_pressure = ${row.inflation_pressure || ''}\n`;
+                inpContent += `*velocity = ${row.velocity || ''}\n`;
+                inpContent += `*preload = ${row.preload || ''}\n`;
+                inpContent += `*camber = ${row.camber || ''}\n`;
+                inpContent += `*slip_angle = ${row.slip_angle || ''}\n`;
+                inpContent += `*displacement = ${row.displacement || ''}\n`;
+                inpContent += `*slip_range = ${row.slip_range || ''}\n`;
+                inpContent += `*cleat = ${row.cleat || ''}\n`;
+                inpContent += `*road_surface = ${row.road_surface || ''}\n`;
+                break;
+        }
+
+        // Write the row-specific .inp file
+        fs.writeFileSync(path.join(runPath, `row_${row.number_of_runs}.inp`), inpContent);
+        return true;
+    } catch (err) {
+        console.error('Error generating row-specific inp file:', err);
+        return false;
+    }
+}
+
 // Replace the existing store-excel-data endpoint with this modified version
 app.post('/api/store-excel-data', (req, res) => {
     const { data } = req.body;
@@ -763,8 +848,9 @@ app.get('/api/get-cdtire-summary', (req, res) => {
 
 // Add new endpoints for folder management
 app.post('/api/clear-folders', (req, res) => {
-    const { projectName } = req.body;
-    const projectPath = path.join(__dirname, 'abaqus', projectName);
+    const { projectName, protocol } = req.body;
+    const combinedFolderName = `${projectName}_${protocol}`;
+    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
     
     try {
         if (fs.existsSync(projectPath)) {
@@ -781,34 +867,34 @@ app.post('/api/clear-folders', (req, res) => {
 
 app.post('/api/create-project-folders', (req, res) => {
     const { projectName, protocol, data } = req.body;
-    const projectPath = path.join(__dirname, 'abaqus', projectName);
-    const protocolPath = path.join(projectPath, protocol);
+    const combinedFolderName = `${projectName}_${protocol}`;  // Combine project and protocol names
+    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
 
     try {
-        // Create project and protocol folders
+        // Create single combined folder
         if (!fs.existsSync(projectPath)) {
             fs.mkdirSync(projectPath, { recursive: true });
         }
-        if (!fs.existsSync(protocolPath)) {
-            fs.mkdirSync(protocolPath, { recursive: true });
-        }
 
-        // Create run number folders
+        // Create run folders and copy files
         data.forEach(row => {
-            const runPath = path.join(protocolPath, row.number_of_runs.toString());
+            const runPath = path.join(projectPath, row.number_of_runs.toString());
             if (!fs.existsSync(runPath)) {
                 fs.mkdirSync(runPath, { recursive: true });
+                copyProtocolFiles(runPath);
+                generateRowSpecificInp(row, protocol, runPath);
             }
         });
 
         res.json({
             success: true,
-            message: 'Folders created successfully'
+            message: 'Folders and files created successfully'
         });
     } catch (err) {
+        console.error('Error:', err);
         res.status(500).json({
             success: false,
-            message: 'Error creating folders'
+            message: 'Error creating folders and files'
         });
     }
 });
