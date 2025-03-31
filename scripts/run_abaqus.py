@@ -37,7 +37,9 @@ def run_abaqus_job(job_name, run_path, inp_file, prev_job=None):
     
     cmd.append('int')  # Use interactive mode
     
-    print(f"Running command: {' '.join(cmd)}")
+    print(f"\nStarting Abaqus job: {job_name}")
+    print(f"Working directory: {run_path}")
+    print(f"Command: {' '.join(cmd)}")
     
     try:
         # First verify input files exist
@@ -45,51 +47,70 @@ def run_abaqus_job(job_name, run_path, inp_file, prev_job=None):
             raise FileNotFoundError(f"Input file {inp_file} not found")
         if not os.path.exists(os.path.join(run_path, 'parameters.inc')):
             raise FileNotFoundError("parameters.inc not found")
+        if not os.path.exists(abaqus_cmd):
+            raise FileNotFoundError(f"Abaqus command not found at: {abaqus_cmd}")
 
-        # Run Abaqus command
+        print("All required files found, launching Abaqus...")
+
+        # Run Abaqus command with output capture
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=run_path,
-            text=True
+            text=True,
+            shell=True
         )
 
-        # Monitor the process with timeout
+        # Monitor the process with timeout and capture output
         start_time = time.time()
         while True:
-            if process.poll() is not None:
-                break
-            
-            # Check if process is still running
             try:
-                # Zero signal just checks if process exists
-                os.kill(process.pid, 0)
-            except OSError:
-                # Process no longer exists
-                print(f"Process for job {job_name} terminated unexpectedly")
-                return False
+                stdout, stderr = process.communicate(timeout=5)
+                if stdout:
+                    print("Process output:", stdout)
+                if stderr:
+                    print("Process errors:", stderr)
+                    
+                return_code = process.returncode
+                print(f"Process completed with return code: {return_code}")
                 
-            time.sleep(5)
-            
-            # Update status file periodically
-            with open(os.path.join(run_path, 'analysis_status.txt'), 'w') as f:
-                f.write("Running")
+                if return_code != 0:
+                    print(f"Warning: Process returned non-zero exit code: {return_code}")
+                break
+                
+            except subprocess.TimeoutExpired:
+                # Check if process is still running
+                try:
+                    os.kill(process.pid, 0)
+                    elapsed_time = time.time() - start_time
+                    print(f"Process still running after {elapsed_time:.1f} seconds...")
+                except OSError as e:
+                    print(f"Process terminated unexpectedly: {str(e)}")
+                    return False
+                    
+                # Update status
+                with open(os.path.join(run_path, 'analysis_status.txt'), 'w') as f:
+                    f.write(f"Running - {elapsed_time:.1f}s")
 
         # Process completed, check the outcome
         if check_completion_status(run_path, job_name):
+            print(f"Job {job_name} completed successfully")
             with open(os.path.join(run_path, 'analysis_status.txt'), 'w') as f:
                 f.write("Completed")
             return True
         else:
+            print(f"Job {job_name} failed completion check")
             with open(os.path.join(run_path, 'analysis_status.txt'), 'w') as f:
-                f.write("Error")
+                f.write("Error - Failed completion check")
             return False
 
     except Exception as e:
-        print(f"Error running job {job_name}: {str(e)}")
+        import traceback
+        print(f"Error running job {job_name}:")
+        print(traceback.format_exc())
         with open(os.path.join(run_path, 'analysis_status.txt'), 'w') as f:
-            f.write("Error")
+            f.write(f"Error - {str(e)}")
         return False
 
 def run_analysis(project_path, single_run=None):
