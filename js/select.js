@@ -277,7 +277,7 @@ function displayCDTireData(data) {
     });
 }
 
-function runSingleAnalysis(runNumber) {
+async function runSingleAnalysis(runNumber) {
     const projectName = sessionStorage.getItem('currentProject');
     if (!projectName) {
         window.location.href = '/index.html';
@@ -286,50 +286,140 @@ function runSingleAnalysis(runNumber) {
 
     const protocol = document.querySelector('table[style*="display: table"]').id.replace('Table', '');
     
-    // Find the status indicator for this run
+    // Find the row and get its data
     const row = document.querySelector(`tr:has(button[data-run="${runNumber}"])`);
+    const cells = row.cells;
     const statusCell = row.querySelector('.status-indicator');
     const runButton = row.querySelector('.row-run-btn');
+
+    // Prepare row data based on protocol
+    let rowData;
+    switch(protocol.toLowerCase()) {
+        case 'mf62':
+            rowData = {
+                number_of_runs: cells[0].textContent,
+                tests: cells[1].textContent,
+                ips: cells[2].textContent,
+                loads: cells[3].textContent,
+                ias: cells[4].textContent,
+                sa_range: cells[5].textContent,
+                sr_range: cells[6].textContent,
+                test_velocity: cells[7].textContent
+            };
+            break;
+        case 'mf52':
+            rowData = {
+                number_of_runs: cells[0].textContent,
+                tests: cells[1].textContent,
+                inflation_pressure: cells[2].textContent,
+                loads: cells[3].textContent,
+                inclination_angle: cells[4].textContent,
+                slip_angle: cells[5].textContent,
+                slip_ratio: cells[6].textContent,
+                test_velocity: cells[7].textContent
+            };
+            break;
+        case 'ftire':
+            rowData = {
+                number_of_runs: cells[0].textContent,
+                tests: cells[1].textContent,
+                loads: cells[2].textContent,
+                inflation_pressure: cells[3].textContent,
+                test_velocity: cells[4].textContent,
+                longitudinal_slip: cells[5].textContent,
+                slip_angle: cells[6].textContent,
+                inclination_angle: cells[7].textContent,
+                cleat_orientation: cells[8].textContent
+            };
+            break;
+        case 'cdtire':
+            rowData = {
+                number_of_runs: cells[0].textContent,
+                test_name: cells[1].textContent,
+                inflation_pressure: cells[2].textContent,
+                velocity: cells[3].textContent,
+                preload: cells[4].textContent,
+                camber: cells[5].textContent,
+                slip_angle: cells[6].textContent,
+                displacement: cells[7].textContent,
+                slip_range: cells[8].textContent,
+                cleat: cells[9].textContent,
+                road_surface: cells[10].textContent
+            };
+            break;
+    }
 
     // Update status to running
     statusCell.textContent = 'Running ⌛';
     statusCell.style.color = '#ffc107';
     runButton.disabled = true;
 
-    // Start analysis for this run only
-    fetch('/api/run-abaqus-jobs', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            projectName,
-            protocol,
-            runNumber  // Add run number to identify which run to process
-        })
-    });
+    try {
+        // Step 1: Copy protocol files
+        const copyResponse = await fetch('/api/copy-protocol-files', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectName,
+                protocol,
+                runs: [runNumber]
+            })
+        });
+        if (!copyResponse.ok) throw new Error('Failed to copy protocol files');
 
-    // Poll for status updates for this specific run
-    const pollStatus = setInterval(() => {
-        fetch(`/api/check-analysis-status?projectName=${projectName}&protocol=${protocol}&run=${runNumber}`)
-            .then(response => response.json())
-            .then(data => {
-                switch(data.status) {
-                    case "Completed":
-                        statusCell.textContent = 'Completed ✓';
-                        statusCell.style.color = '#28a745';
-                        runButton.remove();  // Remove run button when completed
-                        clearInterval(pollStatus);
-                        break;
-                    case "Error":
-                        statusCell.textContent = 'Error ✕';
-                        statusCell.style.color = '#dc3545';
-                        runButton.disabled = false;  // Re-enable button on error
-                        clearInterval(pollStatus);
-                        break;
-                }
-            });
-    }, 5000);
+        // Step 2: Generate row-specific input file
+        const generateResponse = await fetch('/api/generate-input-files', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectName,
+                protocol,
+                rows: [rowData]
+            })
+        });
+        if (!generateResponse.ok) throw new Error('Failed to generate input files');
+
+        // Step 3: Start analysis for this run
+        const runResponse = await fetch('/api/run-abaqus-jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                projectName,
+                protocol,
+                runNumber
+            })
+        });
+        if (!runResponse.ok) throw new Error('Failed to start analysis');
+
+        // Set up status polling
+        const pollStatus = setInterval(() => {
+            fetch(`/api/check-analysis-status?projectName=${projectName}&protocol=${protocol}&run=${runNumber}`)
+                .then(response => response.json())
+                .then(data => {
+                    switch(data.status) {
+                        case "Completed":
+                            statusCell.textContent = 'Completed ✓';
+                            statusCell.style.color = '#28a745';
+                            runButton.remove();
+                            clearInterval(pollStatus);
+                            break;
+                        case "Error":
+                            statusCell.textContent = 'Error ✕';
+                            statusCell.style.color = '#dc3545';
+                            runButton.disabled = false;
+                            clearInterval(pollStatus);
+                            break;
+                    }
+                });
+        }, 5000);
+
+    } catch (error) {
+        console.error('Error during single run setup:', error);
+        statusCell.textContent = 'Error ✕';
+        statusCell.style.color = '#dc3545';
+        runButton.disabled = false;
+        alert('Error setting up analysis: ' + error.message);
+    }
 }
 
 document.getElementById('runBtn').addEventListener('click', async function() {
