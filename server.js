@@ -1066,6 +1066,55 @@ app.post('/api/run-abaqus-jobs', (req, res) => {
     }
 });
 
+// Add new endpoint for copying protocol files
+app.post('/api/copy-protocol-files', (req, res) => {
+    const { projectName, protocol, runs } = req.body;
+    const combinedFolderName = `${projectName}_${protocol}`;
+    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
+
+    try {
+        runs.forEach(runNumber => {
+            const runPath = path.join(projectPath, runNumber.toString());
+            if (!fs.existsSync(runPath)) {
+                fs.mkdirSync(runPath, { recursive: true });
+            }
+            if (!copyProtocolFiles(runPath)) {
+                throw new Error(`Failed to copy files for run ${runNumber}`);
+            }
+        });
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: 'Error copying protocol files: ' + err.message
+        });
+    }
+});
+
+// Add new endpoint for generating row-specific input files
+app.post('/api/generate-input-files', (req, res) => {
+    const { projectName, protocol, rows } = req.body;
+    const combinedFolderName = `${projectName}_${protocol}`;
+    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
+
+    try {
+        rows.forEach(row => {
+            const runPath = path.join(projectPath, row.number_of_runs.toString());
+            if (!generateRowSpecificInp(row, protocol, runPath)) {
+                throw new Error(`Failed to generate input file for run ${row.number_of_runs}`);
+            }
+        });
+
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: 'Error generating input files: ' + err.message
+        });
+    }
+});
+
 // Serve the main application
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));

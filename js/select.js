@@ -332,7 +332,7 @@ function runSingleAnalysis(runNumber) {
     }, 5000);
 }
 
-document.getElementById('runBtn').addEventListener('click', function() {
+document.getElementById('runBtn').addEventListener('click', async function() {
     const projectName = sessionStorage.getItem('currentProject');
     if (!projectName) {
         window.location.href = '/index.html';
@@ -348,7 +348,7 @@ document.getElementById('runBtn').addEventListener('click', function() {
         const runNumber = row.cells[0].textContent;
         statusIndicators[runNumber] = row.querySelector('.status-indicator');
     });
-
+    
     // First check for already completed analyses
     Object.entries(statusIndicators).forEach(([runNumber, indicator]) => {
         fetch(`/api/check-analysis-status?projectName=${projectName}&protocol=${protocol}&run=${runNumber}`)
@@ -361,30 +361,132 @@ document.getElementById('runBtn').addEventListener('click', function() {
             });
     });
 
-    // Start Abaqus analysis
-    fetch('/api/run-abaqus-jobs', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            projectName,
-            protocol
-        })
+    // Get array of row data for pre-analysis
+    const rowData = Array.from(rows).map(row => {
+        const cells = row.cells;
+        const protocol = document.querySelector('table[style*="display: table"]').id.replace('Table', '').toLowerCase();
+        
+        // Create row data object based on protocol
+        let data = {
+            number_of_runs: cells[0].textContent
+        };
+
+        switch(protocol) {
+            case 'mf62':
+                data = {
+                    ...data,
+                    tests: cells[1].textContent,
+                    ips: cells[2].textContent,
+                    loads: cells[3].textContent,
+                    ias: cells[4].textContent,
+                    sa_range: cells[5].textContent,
+                    sr_range: cells[6].textContent,
+                    test_velocity: cells[7].textContent
+                };
+                break;
+            case 'mf52':
+                data = {
+                    ...data,
+                    tests: cells[1].textContent,
+                    inflation_pressure: cells[2].textContent,
+                    loads: cells[3].textContent,
+                    inclination_angle: cells[4].textContent,
+                    slip_angle: cells[5].textContent,
+                    slip_ratio: cells[6].textContent,
+                    test_velocity: cells[7].textContent
+                };
+                break;
+            case 'ftire':
+                data = {
+                    ...data,
+                    tests: cells[1].textContent,
+                    loads: cells[2].textContent,
+                    inflation_pressure: cells[3].textContent,
+                    test_velocity: cells[4].textContent,
+                    longitudinal_slip: cells[5].textContent,
+                    slip_angle: cells[6].textContent,
+                    inclination_angle: cells[7].textContent,
+                    cleat_orientation: cells[8].textContent
+                };
+                break;
+            case 'cdtire':
+                data = {
+                    ...data,
+                    test_name: cells[1].textContent,
+                    inflation_pressure: cells[2].textContent,
+                    velocity: cells[3].textContent,
+                    preload: cells[4].textContent,
+                    camber: cells[5].textContent,
+                    slip_angle: cells[6].textContent,
+                    displacement: cells[7].textContent,
+                    slip_range: cells[8].textContent,
+                    cleat: cells[9].textContent,
+                    road_surface: cells[10].textContent
+                };
+                break;
+        }
+        return data;
     });
 
-    // Start polling for status updates
-    const pollStatus = setInterval(() => {
-        updateStatusIndicators();
-        
-        // Check if all runs are completed or errored
-        const allDone = Array.from(document.querySelectorAll('.status-indicator')).every(ind => 
-            ind.textContent.includes('Completed') || 
-            ind.textContent.includes('Error')
-        );
-        
-        if (allDone) {
-            clearInterval(pollStatus);
-        }
-    }, 5000); // Poll every 5 seconds
+    try {
+        // Step 1: Copy protocol files for each run
+        const copyResponse = await fetch('/api/copy-protocol-files', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                projectName,
+                protocol,
+                runs: rowData.map(row => row.number_of_runs)
+            })
+        });
+        if (!copyResponse.ok) throw new Error('Failed to copy protocol files');
+
+        // Step 2: Generate row-specific input files
+        const generateResponse = await fetch('/api/generate-input-files', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                projectName,
+                protocol,
+                rows: rowData
+            })
+        });
+        if (!generateResponse.ok) throw new Error('Failed to generate input files');
+
+        // Step 3: Run Abaqus jobs
+        const runResponse = await fetch('/api/run-abaqus-jobs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                projectName,
+                protocol
+            })
+        });
+        if (!runResponse.ok) throw new Error('Failed to start Abaqus jobs');
+
+        // Start polling for status updates
+        const pollStatus = setInterval(() => {
+            updateStatusIndicators();
+            
+            // Check if all runs are completed or errored
+            const allDone = Array.from(document.querySelectorAll('.status-indicator')).every(ind => 
+                ind.textContent.includes('Completed') || 
+                ind.textContent.includes('Error')
+            );
+            
+            if (allDone) {
+                clearInterval(pollStatus);
+            }
+        }, 5000);
+
+    } catch (error) {
+        console.error('Error during analysis setup:', error);
+        alert('Error during analysis setup: ' + error.message);
+    }
 });
