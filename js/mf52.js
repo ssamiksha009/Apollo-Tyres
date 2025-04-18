@@ -3,7 +3,7 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
 });
 
 function updateTestSummary() {
-    fetch('/api/get-test-summary')
+    fetch('/api/get-mf52-summary')  // Changed from /api/get-test-summary to use the correct endpoint
         .then(response => response.json())
         .then(data => {
             const summaryContainer = document.getElementById('testSummary');

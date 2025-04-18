@@ -105,15 +105,6 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                         }
 
                         // Handle Load combinations
-                        if (cellStr === 'L1,L2,L3' || 
-                            (cellStr.includes('L1') && cellStr.includes('L2') && cellStr.includes('L3'))) {
-                            const parts = cellStr.split(',');
-                            const newParts = parts.map(part => {
-                                const trimmed = part.trim();
-                                return replacements[trimmed] !== null ? replacements[trimmed] : trimmed;
-                            });
-                            return newParts.join(',');
-                        }
                         
                         // Handle Velocities
                         if (cellStr.toLowerCase() === 'vel') {
@@ -149,6 +140,73 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                 method: 'POST',
                 body: formData
             });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.message || 'Error storing data');
+            }
+
+            // Read the saved Excel file to extract and store data
+            return fetch('/api/read-output-excel')
+                .then(response => response.arrayBuffer())
+                .then(data => {
+                    const workbook = XLSX.read(new Uint8Array(data), {type: 'array'});
+                    const extractedData = [];
+
+                    workbook.SheetNames.forEach((sheetName) => {
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                        
+                        // Find the header row
+                        let headerRowIndex = jsonData.findIndex(row => 
+                            row && row.includes('Number Of Tests'));
+                        
+                        if (headerRowIndex === -1) return;
+                        
+                        const headerRow = jsonData[headerRowIndex];
+                        const columns = {
+                            runs: headerRow.indexOf('Number Of Tests'),
+                            tests: headerRow.indexOf('Tests'),
+                            ips: headerRow.indexOf('Inflation Pressure [PSI]'),
+                            loads: headerRow.indexOf('Loads[Kg]'),
+                            ias: headerRow.indexOf('Inclination Angle[°]'),
+                            sa_range: headerRow.indexOf('Slip Angle[°]'),
+                            sr_range: headerRow.indexOf('Slip Ratio [%]'),
+                            test_velocity: headerRow.indexOf('Test Velocity [Kmph]')
+                        };
+
+                        // Extract data rows
+                        for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
+                            const row = jsonData[i];
+                            if (!row || !row[columns.runs]) continue;
+
+                            extractedData.push({
+                                number_of_runs: parseInt(row[columns.runs]),
+                                tests: row[columns.tests]?.toString() || '',
+                                ips: row[columns.ips]?.toString() || '',
+                                loads: row[columns.loads]?.toString() || '',
+                                ias: row[columns.ias]?.toString() || '',
+                                sa_range: row[columns.sa_range]?.toString() || '',
+                                sr_range: row[columns.sr_range]?.toString() || '',
+                                test_velocity: row[columns.test_velocity]?.toString() || ''
+                            });
+                        }
+                    });
+
+                    if (extractedData.length === 0) {
+                        throw new Error('No valid data found in Excel file');
+                    }
+
+                    // Store the extracted data
+                    return fetch('/api/store-excel-data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ data: extractedData })
+                    });
+                });
         })
         .then(response => response.json())
         .then(data => {

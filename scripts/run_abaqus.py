@@ -84,7 +84,7 @@ def run_abaqus_job(job_name, run_path, inp_file, prev_job=None):
                 try:
                     os.kill(process.pid, 0)
                     elapsed_time = time.time() - start_time
-                    print(f"Process still running after {elapsed_time:.1f} seconds...")
+
                 except OSError as e:
                     print(f"Process terminated unexpectedly: {str(e)}")
                     return False

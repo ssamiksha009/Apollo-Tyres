@@ -16,159 +16,186 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// MySQL Connection
-const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',              // Replace with your MySQL username
-    password: '0306',      // Replace with your MySQL password
-    database: 'apollo_tyres'
-});
+// MySQL Connection with retry logic
+const dbConfig = {
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',              
+    password: process.env.DB_PASSWORD || '0306',      
+    database: process.env.DB_NAME || 'apollo_tyres',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+};
 
-// Connect to MySQL
-db.connect(err => {
-    if (err) {
-        console.error('Error connecting to MySQL database:', err);
-        return;
-    }
-    console.log('Connected to MySQL database');
+// Create a function to connect with retry
+function connectWithRetry(maxRetries = 10, delay = 5000) {
+    let retries = 0;
     
-    // Create the user table if it doesn't exist
-    const createTableQuery = `
-        CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            email VARCHAR(255) NOT NULL UNIQUE,
-            password VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )
-    `;
+    const db = mysql.createConnection(dbConfig);
     
-    db.query(createTableQuery, (err) => {
-        if (err) {
-            console.error('Error creating users table:', err);
-            return;
-        }
-        
-        // Check if admin user exists, if not create it
-        const checkAdminQuery = 'SELECT * FROM users WHERE email = ?';
-        db.query(checkAdminQuery, ['admin@apollotyres.com'], (err, results) => {
+    const tryConnect = () => {
+        db.connect(err => {
             if (err) {
-                console.error('Error checking admin user:', err);
-                return;
+                console.error(`Error connecting to MySQL database (attempt ${retries + 1}):`, err);
+                
+                if (retries < maxRetries) {
+                    retries++;
+                    console.log(`Retrying in ${delay/1000} seconds...`);
+                    setTimeout(tryConnect, delay);
+                    return;
+                } else {
+                    console.error(`Max retries (${maxRetries}) reached. Unable to connect to MySQL database.`);
+                    return;
+                }
             }
             
-            if (results.length === 0) {
-                // Create admin user with password Apollo@123
-                bcrypt.hash('Apollo@123', 10, (err, hash) => {
+            console.log('Connected to MySQL database');
+            
+            // Create the user table if it doesn't exist
+            const createTableQuery = `
+                CREATE TABLE IF NOT EXISTS users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    email VARCHAR(255) NOT NULL UNIQUE,
+                    password VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )
+            `;
+            
+            db.query(createTableQuery, (err) => {
+                if (err) {
+                    console.error('Error creating users table:', err);
+                    return;
+                }
+                
+                // Check if admin user exists, if not create it
+                const checkAdminQuery = 'SELECT * FROM users WHERE email = ?';
+                db.query(checkAdminQuery, ['admin@apollotyres.com'], (err, results) => {
                     if (err) {
-                        console.error('Error hashing password:', err);
+                        console.error('Error checking admin user:', err);
                         return;
                     }
                     
-                    const insertAdminQuery = 'INSERT INTO users (email, password) VALUES (?, ?)';
-                    db.query(insertAdminQuery, ['admin@apollotyres.com', hash], (err) => {
-                        if (err) {
-                            console.error('Error creating admin user:', err);
-                            return;
-                        }
-                        console.log('Admin user created successfully');
-                    });
+                    if (results.length === 0) {
+                        // Create admin user with password Apollo@123
+                        bcrypt.hash('Apollo@123', 10, (err, hash) => {
+                            if (err) {
+                                console.error('Error hashing password:', err);
+                                return;
+                            }
+                            
+                            const insertAdminQuery = 'INSERT INTO users (email, password) VALUES (?, ?)';
+                            db.query(insertAdminQuery, ['admin@apollotyres.com', hash], (err) => {
+                                if (err) {
+                                    console.error('Error creating admin user:', err);
+                                    return;
+                                }
+                                console.log('Admin user created successfully');
+                            });
+                        });
+                    }
                 });
-            }
+            });
+
+            // Create the mf_data table if it doesn't exist
+            const createMFDataTable = `
+                CREATE TABLE IF NOT EXISTS mf_data (
+                    number_of_runs INT,
+                    tests VARCHAR(255),
+                    ips VARCHAR(255),
+                    loads VARCHAR(255),
+                    ias VARCHAR(255),
+                    sa_range VARCHAR(255),
+                    sr_range VARCHAR(255),
+                    test_velocity VARCHAR(255)
+                )
+            `;
+
+            db.query(createMFDataTable, (err) => {
+                if (err) {
+                    console.error('Error creating mf_data table:', err);
+                    return;
+                }
+                console.log('MF data table created successfully');
+            });
+
+            // Add after existing table creations
+            const createMF52DataTable = `
+                CREATE TABLE IF NOT EXISTS mf52_data (
+                    number_of_runs INT,
+                    tests VARCHAR(255),
+                    inflation_pressure VARCHAR(255),
+                    loads VARCHAR(255),
+                    inclination_angle VARCHAR(255),
+                    slip_angle VARCHAR(255),
+                    slip_ratio VARCHAR(255),
+                    test_velocity VARCHAR(255)
+                )
+            `;
+
+            db.query(createMF52DataTable, (err) => {
+                if (err) {
+                    console.error('Error creating mf52_data table:', err);
+                    return;
+                }
+                console.log('MF 5.2 data table created successfully');
+            });
+
+            // Add FTire table creation with exact column names
+            const createFTireDataTable = `
+                CREATE TABLE IF NOT EXISTS ftire_data (
+                    number_of_runs INT,
+                    tests VARCHAR(255),
+                    loads VARCHAR(255),
+                    inflation_pressure VARCHAR(255),
+                    test_velocity VARCHAR(255),
+                    longitudinal_slip VARCHAR(255),
+                    slip_angle VARCHAR(255),
+                    inclination_angle VARCHAR(255),
+                    cleat_orientation VARCHAR(255)
+                )
+            `;
+
+            db.query(createFTireDataTable, (err) => {
+                if (err) {
+                    console.error('Error creating ftire_data table:', err);
+                    return;
+                }
+                console.log('FTire data table created successfully');
+            });
+
+            const createCDTireDataTable = `
+                CREATE TABLE IF NOT EXISTS cdtire_data (
+                    number_of_runs INT,
+                    test_name VARCHAR(255),
+                    inflation_pressure VARCHAR(255),
+                    velocity VARCHAR(255),
+                    preload VARCHAR(255),
+                    camber VARCHAR(255),
+                    slip_angle VARCHAR(255),
+                    displacement VARCHAR(255),
+                    slip_range VARCHAR(255),
+                    cleat VARCHAR(255),
+                    road_surface VARCHAR(255)
+                )
+            `;
+
+            db.query(createCDTireDataTable, (err) => {
+                if (err) {
+                    console.error('Error creating cdtire_data table:', err);
+                    return;
+                }
+                console.log('CDTire data table created successfully');
+            });
         });
-    });
+    };
+    
+    tryConnect();
+    return db;
+}
 
-    // Create the mf_data table if it doesn't exist
-    const createMFDataTable = `
-        CREATE TABLE IF NOT EXISTS mf_data (
-            number_of_runs INT,
-            tests VARCHAR(255),
-            ips VARCHAR(255),
-            loads VARCHAR(255),
-            ias VARCHAR(255),
-            sa_range VARCHAR(255),
-            sr_range VARCHAR(255),
-            test_velocity VARCHAR(255)
-        )
-    `;
-
-    db.query(createMFDataTable, (err) => {
-        if (err) {
-            console.error('Error creating mf_data table:', err);
-            return;
-        }
-        console.log('MF data table created successfully');
-    });
-
-    // Add after existing table creations
-    const createMF52DataTable = `
-        CREATE TABLE IF NOT EXISTS mf52_data (
-            number_of_runs INT,
-            tests VARCHAR(255),
-            inflation_pressure VARCHAR(255),
-            loads VARCHAR(255),
-            inclination_angle VARCHAR(255),
-            slip_angle VARCHAR(255),
-            slip_ratio VARCHAR(255),
-            test_velocity VARCHAR(255)
-        )
-    `;
-
-    db.query(createMF52DataTable, (err) => {
-        if (err) {
-            console.error('Error creating mf52_data table:', err);
-            return;
-        }
-        console.log('MF 5.2 data table created successfully');
-    });
-
-    // Add FTire table creation with exact column names
-    const createFTireDataTable = `
-        CREATE TABLE IF NOT EXISTS ftire_data (
-            number_of_runs INT,
-            tests VARCHAR(255),
-            loads VARCHAR(255),
-            inflation_pressure VARCHAR(255),
-            test_velocity VARCHAR(255),
-            longitudinal_slip VARCHAR(255),
-            slip_angle VARCHAR(255),
-            inclination_angle VARCHAR(255),
-            cleat_orientation VARCHAR(255)
-        )
-    `;
-
-    db.query(createFTireDataTable, (err) => {
-        if (err) {
-            console.error('Error creating ftire_data table:', err);
-            return;
-        }
-        console.log('FTire data table created successfully');
-    });
-
-    const createCDTireDataTable = `
-        CREATE TABLE IF NOT EXISTS cdtire_data (
-            number_of_runs INT,
-            test_name VARCHAR(255),
-            inflation_pressure VARCHAR(255),
-            velocity VARCHAR(255),
-            preload VARCHAR(255),
-            camber VARCHAR(255),
-            slip_angle VARCHAR(255),
-            displacement VARCHAR(255),
-            slip_range VARCHAR(255),
-            cleat VARCHAR(255),
-            road_surface VARCHAR(255)
-        )
-    `;
-
-    db.query(createCDTireDataTable, (err) => {
-        if (err) {
-            console.error('Error creating cdtire_data table:', err);
-            return;
-        }
-        console.log('CDTire data table created successfully');
-    });
-});
+// Connect to MySQL with retry
+const db = connectWithRetry();
 
 // Secret key for JWT
 const JWT_SECRET = 'apollo-tyres-secret-key'; // In production, use environment variable
@@ -599,8 +626,6 @@ app.get('/api/get-test-summary', (req, res) => {
     });
 });
 
-
-
 // Add new endpoint for MF 5.2 data
 app.post('/api/store-mf52-data', (req, res) => {
     const { data } = req.body;
@@ -667,6 +692,28 @@ app.get('/api/get-mf52-data', (req, res) => {
             });
         }
         res.json(results);
+    });
+});
+
+// Add new endpoint for MF 5.2 test summary data
+app.get('/api/get-mf52-summary', (req, res) => {
+    const query = `
+        SELECT tests, COUNT(*) as count
+        FROM mf52_data
+        WHERE tests IS NOT NULL AND tests != ''
+        GROUP BY tests
+        ORDER BY count DESC
+    `;
+    
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching MF 5.2 summary:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching test summary'
+            });
+        }
+        res.json(results || []); // Return empty array if no results
     });
 });
 
