@@ -350,20 +350,7 @@ function clearAbaqusFolder() {
     fs.mkdirSync(abaqusPath, { recursive: true });
 }
 
-function createRunFolders(data) {
-    const abaqusPath = path.join(__dirname, 'abaqus');
-    
-    // Get unique run numbers
-    const uniqueRuns = [...new Set(data.map(row => row.number_of_runs))];
-    
-    // Create folders for each unique run number
-    uniqueRuns.forEach(runNumber => {
-        const runPath = path.join(abaqusPath, runNumber.toString());
-        if (!fs.existsSync(runPath)) {
-            fs.mkdirSync(runPath, { recursive: true });
-        }
-    });
-}
+
 
 // Add new utility function after existing ones
 function copyProtocolFiles(runPath) {
@@ -461,17 +448,6 @@ app.post('/api/store-excel-data', (req, res) => {
         });
     }
 
-    // Clear and create Abaqus folders
-    try {
-        clearAbaqusFolder();
-        createRunFolders(data);
-    } catch (err) {
-        console.error('Error managing folders:', err);
-        return res.status(500).json({
-            success: false,
-            message: 'Error managing folders'
-        });
-    }
 
     // First truncate the table
     const truncateQuery = 'TRUNCATE TABLE mf_data';
