@@ -1,12 +1,12 @@
 const express = require('express');
-const mysql = require('mysql2');
+const { Pool } = require('pg'); 
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
-const rimraf = require('rimraf');  // Add this at the top with other requires
-const { spawn } = require('child_process'); // Add this at the top with other requires
+const rimraf = require('rimraf');
+const { spawn } = require('child_process');
 
 // Create express app
 const app = express();
@@ -16,67 +16,94 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// MySQL Connection with retry logic
+// PostgreSQL Connection with retry logic
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',              
+    user: process.env.DB_USER || 'postgres',    // Changed from 'root' to default PostgreSQL user        
     password: process.env.DB_PASSWORD || '0306',      
-    database: process.env.DB_NAME || 'apollo_tyres',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+    port: process.env.DB_PORT || 5432   // Added port for PostgreSQL
 };
 
 // Create a function to connect with retry
 function connectWithRetry(maxRetries = 10, delay = 5000) {
     let retries = 0;
     
-    const db = mysql.createConnection(dbConfig);
+    // First connect to default 'postgres' database to check/create our database
+    const rootPool = new Pool({
+        ...dbConfig,
+        database: 'postgres'  // Connect to default PostgreSQL database
+    });
     
-    const tryConnect = () => {
-        db.connect(err => {
-            if (err) {
-                console.error(`Error connecting to MySQL database (attempt ${retries + 1}):`, err);
-                
-                if (retries < maxRetries) {
-                    retries++;
-                    console.log(`Retrying in ${delay/1000} seconds...`);
-                    setTimeout(tryConnect, delay);
-                    return;
-                } else {
-                    console.error(`Max retries (${maxRetries}) reached. Unable to connect to MySQL database.`);
-                    return;
-                }
+    // Function to create database if not exists and then connect to it
+    const setupDatabase = async () => {
+        try {
+            // Check if database exists
+            const dbCheckResult = await rootPool.query(
+                "SELECT 1 FROM pg_database WHERE datname = $1", 
+                ['apollo_tyres']
+            );
+            
+            // Create database if it doesn't exist
+            if (dbCheckResult.rows.length === 0) {
+                console.log('Database apollo_tyres does not exist, creating it now...');
+                await rootPool.query('CREATE DATABASE apollo_tyres');
+                console.log('Database apollo_tyres created successfully');
+            } else {
+                console.log('Database apollo_tyres already exists');
             }
             
-            console.log('Connected to MySQL database');
+            // Close the connection to postgres database
+            await rootPool.end();
+            
+            // Now create the connection pool to our application database
+            const pool = new Pool({
+                ...dbConfig,
+                database: 'apollo_tyres'
+            });
+            
+            return pool;
+        } catch (error) {
+            console.error('Error setting up database:', error);
+            await rootPool.end();
+            throw error;
+        }
+    };
+    
+    // Function to try connecting with retry logic
+    const tryConnect = async () => {
+        try {
+            const pool = await setupDatabase();
+            
+            // Test connection
+            await pool.query('SELECT NOW()');
+            console.log('Connected to PostgreSQL database');
             
             // Create the user table if it doesn't exist
             const createTableQuery = `
                 CREATE TABLE IF NOT EXISTS users (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id SERIAL PRIMARY KEY,
                     email VARCHAR(255) NOT NULL UNIQUE,
                     password VARCHAR(255) NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `;
             
-            db.query(createTableQuery, (err) => {
+            pool.query(createTableQuery, (err) => {
                 if (err) {
                     console.error('Error creating users table:', err);
                     return;
                 }
                 
                 // Check if admin user exists, if not create it
-                const checkAdminQuery = 'SELECT * FROM users WHERE email = ?';
-                db.query(checkAdminQuery, ['admin@apollotyres.com'], (err, results) => {
+                const checkAdminQuery = 'SELECT * FROM users WHERE email = $1';
+                pool.query(checkAdminQuery, ['admin@apollotyres.com'], (err, results) => {
                     if (err) {
                         console.error('Error checking admin user:', err);
                         return;
                     }
                     
-                    if (results.length === 0) {
+                    if (results.rowCount === 0) {
                         // Create admin user with password Apollo@123
                         bcrypt.hash('Apollo@123', 10, (err, hash) => {
                             if (err) {
@@ -84,8 +111,8 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                                 return;
                             }
                             
-                            const insertAdminQuery = 'INSERT INTO users (email, password) VALUES (?, ?)';
-                            db.query(insertAdminQuery, ['admin@apollotyres.com', hash], (err) => {
+                            const insertAdminQuery = 'INSERT INTO users (email, password) VALUES ($1, $2)';
+                            pool.query(insertAdminQuery, ['admin@apollotyres.com', hash], (err) => {
                                 if (err) {
                                     console.error('Error creating admin user:', err);
                                     return;
@@ -111,7 +138,7 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                 )
             `;
 
-            db.query(createMFDataTable, (err) => {
+            pool.query(createMFDataTable, (err) => {
                 if (err) {
                     console.error('Error creating mf_data table:', err);
                     return;
@@ -133,7 +160,7 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                 )
             `;
 
-            db.query(createMF52DataTable, (err) => {
+            pool.query(createMF52DataTable, (err) => {
                 if (err) {
                     console.error('Error creating mf52_data table:', err);
                     return;
@@ -156,7 +183,7 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                 )
             `;
 
-            db.query(createFTireDataTable, (err) => {
+            pool.query(createFTireDataTable, (err) => {
                 if (err) {
                     console.error('Error creating ftire_data table:', err);
                     return;
@@ -180,22 +207,45 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                 )
             `;
 
-            db.query(createCDTireDataTable, (err) => {
+            pool.query(createCDTireDataTable, (err) => {
                 if (err) {
                     console.error('Error creating cdtire_data table:', err);
                     return;
                 }
                 console.log('CDTire data table created successfully');
             });
-        });
+
+            return pool;
+        } catch (err) {
+            console.error(`Error connecting to PostgreSQL database (attempt ${retries + 1}):`, err);
+            
+            if (retries < maxRetries) {
+                retries++;
+                console.log(`Retrying in ${delay/1000} seconds...`);
+                return new Promise(resolve => {
+                    setTimeout(() => resolve(tryConnect()), delay);
+                });
+            } else {
+                console.error(`Max retries (${maxRetries}) reached. Unable to connect to PostgreSQL database.`);
+                throw err;
+            }
+        }
     };
     
-    tryConnect();
-    return db;
+    return tryConnect();
 }
 
-// Connect to MySQL with retry
-const db = connectWithRetry();
+// Connect to PostgreSQL with retry - now returns a Promise
+let dbPromise = connectWithRetry();
+let db;
+
+// Initialize db when connection is established
+dbPromise.then(pool => {
+    db = pool;
+    console.log('Database connection established and assigned to db variable');
+}).catch(err => {
+    console.error('Failed to establish database connection:', err);
+});
 
 // Secret key for JWT
 const JWT_SECRET = 'apollo-tyres-secret-key'; // In production, use environment variable
@@ -219,7 +269,7 @@ app.post('/api/login', (req, res) => {
     }
     
     // Query database for user
-    const query = 'SELECT * FROM users WHERE email = ?';
+    const query = 'SELECT * FROM users WHERE email = $1';
     db.query(query, [email], (err, results) => {
         if (err) {
             console.error('Database error:', err);
@@ -230,14 +280,14 @@ app.post('/api/login', (req, res) => {
         }
         
         // Check if user exists
-        if (results.length === 0) {
+        if (results.rows.length === 0) {
             return res.status(401).json({ 
                 success: false, 
                 message: 'Invalid email or password' 
             });
         }
         
-        const user = results[0];
+        const user = results.rows[0];
         
         // Compare password
         bcrypt.compare(password, user.password, (err, isMatch) => {
@@ -448,7 +498,6 @@ app.post('/api/store-excel-data', (req, res) => {
         });
     }
 
-
     // First truncate the table
     const truncateQuery = 'TRUNCATE TABLE mf_data';
     db.query(truncateQuery, (truncateErr) => {
@@ -460,38 +509,40 @@ app.post('/api/store-excel-data', (req, res) => {
             });
         }
 
-        // Rest of the existing store-excel-data logic
-        const insertQuery = `
-            INSERT INTO mf_data 
-            (number_of_runs, tests, ips, loads, ias, sa_range, sr_range, test_velocity)
-            VALUES ?
-        `;
+        // PostgreSQL doesn't support the VALUES ? syntax, use individual inserts with Promise.all
+        const insertPromises = data.map(row => {
+            const insertQuery = `
+                INSERT INTO mf_data 
+                (number_of_runs, tests, ips, loads, ias, sa_range, sr_range, test_velocity)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            `;
+            
+            return db.query(insertQuery, [
+                row.number_of_runs,
+                row.tests,
+                row.ips,
+                row.loads,
+                row.ias,
+                row.sa_range,
+                row.sr_range,
+                row.test_velocity
+            ]);
+        });
 
-        const values = data.map(row => [
-            row.number_of_runs,
-            row.tests,
-            row.ips,
-            row.loads,
-            row.ias,
-            row.sa_range,
-            row.sr_range,
-            row.test_velocity
-        ]);
-
-        db.query(insertQuery, [values], (err, result) => {
-            if (err) {
+        Promise.all(insertPromises)
+            .then(() => {
+                res.json({
+                    success: true,
+                    message: 'Data stored successfully'
+                });
+            })
+            .catch(err => {
                 console.error('Error storing data:', err);
                 return res.status(500).json({
                     success: false,
                     message: 'Error storing data'
                 });
-            }
-
-            res.json({
-                success: true,
-                message: 'Data stored successfully'
             });
-        });
     });
 });
 
@@ -576,7 +627,7 @@ app.get('/api/get-mf-data', (req, res) => {
                 message: 'Error fetching data'
             });
         }
-        res.json(results);
+        res.json(results.rows); // Changed from results to results.rows
     });
 });
 
@@ -598,7 +649,7 @@ app.get('/api/get-test-summary', (req, res) => {
                 message: 'Error fetching test summary'
             });
         }
-        res.json(results);
+        res.json(results.rows); // Changed from results to results.rows
     });
 });
 
@@ -623,37 +674,40 @@ app.post('/api/store-mf52-data', (req, res) => {
             });
         }
 
-        const insertQuery = `
-            INSERT INTO mf52_data 
-            (number_of_runs, tests, inflation_pressure, loads, inclination_angle, 
-             slip_angle, slip_ratio, test_velocity)
-            VALUES ?
-        `;
+        // PostgreSQL doesn't support the VALUES ? syntax, use individual inserts with Promise.all
+        const insertPromises = data.map(row => {
+            const insertQuery = `
+                INSERT INTO mf52_data 
+                (number_of_runs, tests, inflation_pressure, loads, inclination_angle, 
+                 slip_angle, slip_ratio, test_velocity)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            `;
+            
+            return db.query(insertQuery, [
+                row.number_of_runs,
+                row.tests,
+                row.inflation_pressure,
+                row.loads,
+                row.inclination_angle,
+                row.slip_angle,
+                row.slip_ratio,
+                row.test_velocity
+            ]);
+        });
 
-        const values = data.map(row => [
-            row.number_of_runs,
-            row.tests,
-            row.inflation_pressure,
-            row.loads,
-            row.inclination_angle,
-            row.slip_angle,
-            row.slip_ratio,
-            row.test_velocity
-        ]);
-
-        db.query(insertQuery, [values], (err) => {
-            if (err) {
+        Promise.all(insertPromises)
+            .then(() => {
+                res.json({
+                    success: true,
+                    message: 'Data stored successfully'
+                });
+            })
+            .catch(err => {
                 return res.status(500).json({
                     success: false,
                     message: 'Error storing data'
                 });
-            }
-
-            res.json({
-                success: true,
-                message: 'Data stored successfully'
             });
-        });
     });
 });
 
@@ -667,7 +721,7 @@ app.get('/api/get-mf52-data', (req, res) => {
                 message: 'Error fetching data'
             });
         }
-        res.json(results);
+        res.json(results.rows); // Changed from results to results.rows
     });
 });
 
@@ -689,7 +743,7 @@ app.get('/api/get-mf52-summary', (req, res) => {
                 message: 'Error fetching test summary'
             });
         }
-        res.json(results || []); // Return empty array if no results
+        res.json(results.rows || []); // Changed from results to results.rows
     });
 });
 
@@ -713,38 +767,41 @@ app.post('/api/store-ftire-data', (req, res) => {
             });
         }
 
-        const insertQuery = `
-            INSERT INTO ftire_data 
-            (number_of_runs, tests, loads, inflation_pressure, test_velocity,
-             longitudinal_slip, slip_angle, inclination_angle, cleat_orientation)
-            VALUES ?
-        `;
+        // PostgreSQL doesn't support the VALUES ? syntax, use individual inserts with Promise.all
+        const insertPromises = data.map(row => {
+            const insertQuery = `
+                INSERT INTO ftire_data 
+                (number_of_runs, tests, loads, inflation_pressure, test_velocity,
+                 longitudinal_slip, slip_angle, inclination_angle, cleat_orientation)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `;
+            
+            return db.query(insertQuery, [
+                row.number_of_runs || 0,
+                row.tests || '',
+                row.loads || '',
+                row.inflation_pressure || '',
+                row.test_velocity || '',
+                row.longitudinal_slip || '',
+                row.slip_angle || '',
+                row.inclination_angle || '',
+                row.cleat_orientation || ''
+            ]);
+        });
 
-        const values = data.map(row => [
-            row.number_of_runs || 0,
-            row.tests || '',
-            row.loads || '',
-            row.inflation_pressure || '',
-            row.test_velocity || '',
-            row.longitudinal_slip || '',
-            row.slip_angle || '',
-            row.inclination_angle || '',
-            row.cleat_orientation || ''
-        ]);
-
-        db.query(insertQuery, [values], (err) => {
-            if (err) {
+        Promise.all(insertPromises)
+            .then(() => {
+                res.json({
+                    success: true,
+                    message: 'Data stored successfully'
+                });
+            })
+            .catch(err => {
                 return res.status(500).json({
                     success: false,
                     message: 'Error storing data'
                 });
-            }
-
-            res.json({
-                success: true,
-                message: 'Data stored successfully'
             });
-        });
     });
 });
 
@@ -757,7 +814,7 @@ app.get('/api/get-ftire-data', (req, res) => {
                 message: 'Error fetching data'
             });
         }
-        res.json(results);
+        res.json(results.rows); // Changed from results to results.rows
     });
 });
 
@@ -777,7 +834,7 @@ app.get('/api/get-ftire-summary', (req, res) => {
                 message: 'Error fetching test summary'
             });
         }
-        res.json(results || []); // Return empty array if no results
+        res.json(results.rows || []); // Changed from results to results.rows
     });
 });
 
@@ -800,39 +857,43 @@ app.post('/api/store-cdtire-data', (req, res) => {
             });
         }
 
-        const insertQuery = `
-            INSERT INTO cdtire_data 
-            (number_of_runs, test_name, inflation_pressure, velocity, preload,
-             camber, slip_angle, displacement, slip_range, cleat, road_surface)
-            VALUES ?
-        `;
+        // PostgreSQL doesn't support the VALUES ? syntax, use individual inserts with Promise.all
+        const insertPromises = data.map(row => {
+            const insertQuery = `
+                INSERT INTO cdtire_data 
+                (number_of_runs, test_name, inflation_pressure, velocity, preload,
+                 camber, slip_angle, displacement, slip_range, cleat, road_surface)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            `;
+            
+            return db.query(insertQuery, [
+                row.number_of_runs || 0,
+                row.test_name || '',
+                row.inflation_pressure || '',
+                row.velocity || '',
+                row.preload || '',
+                row.camber || '',
+                row.slip_angle || '',
+                row.displacement || '',
+                row.slip_range || '',
+                row.cleat || '',
+                row.road_surface || ''
+            ]);
+        });
 
-        const values = data.map(row => [
-            row.number_of_runs || 0,
-            row.test_name || '',
-            row.inflation_pressure || '',
-            row.velocity || '',
-            row.preload || '',
-            row.camber || '',
-            row.slip_angle || '',
-            row.displacement || '',
-            row.slip_range || '',
-            row.cleat || '',
-            row.road_surface || ''
-        ]);
-
-        db.query(insertQuery, [values], (err) => {
-            if (err) {
+        Promise.all(insertPromises)
+            .then(() => {
+                res.json({
+                    success: true,
+                    message: 'Data stored successfully'
+                });
+            })
+            .catch(err => {
                 return res.status(500).json({
                     success: false,
                     message: 'Error storing data'
                 });
-            }
-            res.json({
-                success: true,
-                message: 'Data stored successfully'
             });
-        });
     });
 });
 
@@ -845,7 +906,7 @@ app.get('/api/get-cdtire-data', (req, res) => {
                 message: 'Error fetching data'
             });
         }
-        res.json(results);
+        res.json(results.rows); // Changed from results to results.rows
     });
 });
 
@@ -866,7 +927,7 @@ app.get('/api/get-cdtire-summary', (req, res) => {
                 message: 'Error fetching test summary'
             });
         }
-        res.json(results || []); // Return empty array if no results
+        res.json(results.rows || []); // Changed from results to results.rows
     });
 });
 
