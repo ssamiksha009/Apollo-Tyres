@@ -4,18 +4,27 @@ document.getElementById('logoutBtn').addEventListener('click', function() {
 });
 
 function updateTestSummary() {
-    fetch('/api/get-test-summary')
+    fetch('/api/get-custom-summary')
         .then(response => response.json())
         .then(data => {
             const summaryContainer = document.getElementById('testSummary');
+            if (!data || data.length === 0) {
+                summaryContainer.innerHTML = '<div class="summary-item">No tests available</div>';
+                return;
+            }
+            
             summaryContainer.innerHTML = data.map(item => `
                 <div class="summary-item">
-                    <span class="test-name">${item.tests}:</span>
+                    <span class="test-name">${item.tests || 'Unknown'}:</span>
                     <span class="test-count">${item.count}</span>
                 </div>
             `).join('');
         })
-        .catch(error => console.error('Error fetching test summary:', error));
+        .catch(error => {
+            console.error('Error fetching test summary:', error);
+            const summaryContainer = document.getElementById('testSummary');
+            summaryContainer.innerHTML = '<div class="error-message">Unable to load test summary</div>';
+        });
 }
 
 // Call when page loads
@@ -26,52 +35,56 @@ document.getElementById('submitBtn').addEventListener('click', function() {
     const errorMessage = document.getElementById('errorMessage');
     errorMessage.textContent = '';
     
-    // Check if all inputs are filled and valid
-    const inputs = document.querySelectorAll('input[required]');
-    let allValid = true;
+    // Only check if customProtocolFile is selected, since it's the only required field
+    const customProtocolFile = document.getElementById('customProtocolFile').files[0];
     
-    inputs.forEach(input => {
-        if (!input.value || !input.checkValidity()) {
-            allValid = false;
-            input.classList.add('invalid');
-        } else {
-            input.classList.remove('invalid');
-        }
-    });
-
-    if (!allValid) {
-        errorMessage.textContent = '* All fields are mandatory and must be positive numbers';
+    if (!customProtocolFile) {
+        errorMessage.textContent = 'Custom Protocol file is required';
         errorMessage.style.display = 'block';
         return;
     }
     
-    // Handle mesh file upload if provided
-    const meshFile = document.getElementById('meshFile').files[0];
-    if (meshFile) {
-        const formData = new FormData();
-        formData.append('meshFile', meshFile);
+    // First upload custom protocol file
+    const formData = new FormData();
+    formData.append('customProtocolFile', customProtocolFile);
+    
+    fetch('/api/upload-custom-protocol', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to upload custom protocol file');
+        }
         
-        // Upload the mesh file
-        fetch('/api/upload-mesh-file', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                throw new Error(data.message || 'Failed to upload mesh file');
-            }
-            // Continue with Excel processing after successful mesh file upload
-            processCustomExcel();
-        })
-        .catch(error => {
-            errorMessage.style.color = '#d9534f';
-            errorMessage.textContent = error.message || 'Error uploading mesh file. Please try again.';
-        });
-    } else {
-        // Proceed without mesh file upload
-        processCustomExcel();
-    }
+        // Check for mesh file and upload if present
+        const meshFile = document.getElementById('meshFile').files[0];
+        if (meshFile) {
+            const meshFormData = new FormData();
+            meshFormData.append('meshFile', meshFile);
+            
+            return fetch('/api/upload-mesh-file', {
+                method: 'POST',
+                body: meshFormData
+            })
+            .then(response => response.json())
+            .then(meshData => {
+                if (!meshData.success) {
+                    throw new Error(meshData.message || 'Failed to upload mesh file');
+                }
+                // Continue with Excel processing
+                return processCustomExcel();
+            });
+        } else {
+            // No mesh file, proceed directly with Excel processing
+            return processCustomExcel();
+        }
+    })
+    .catch(error => {
+        errorMessage.style.color = '#d9534f';
+        errorMessage.textContent = error.message || 'Error processing files. Please try again.';
+    });
 });
 
 // Extract Excel processing to a separate function
@@ -83,7 +96,6 @@ function processCustomExcel() {
         .then(response => response.arrayBuffer())
         .then(data => {
             const workbook = XLSX.read(new Uint8Array(data), {type: 'array'});
-            // Rest of Excel processing code...
             const outputWorkbook = XLSX.utils.book_new();
             
             workbook.SheetNames.forEach((sheetName) => {
@@ -98,7 +110,10 @@ function processCustomExcel() {
                     'L1': document.getElementById('l1').value.trim() || null,
                     'L2': document.getElementById('l2').value.trim() || null,
                     'L3': document.getElementById('l3').value.trim() || null,
+                    'L4': document.getElementById('l4').value.trim() || null,
+                    'L5': document.getElementById('l5').value.trim() || null,
                     'VEL': document.getElementById('vel').value.trim() || null,
+                    'IPref': document.getElementById('p1').value.trim() || null
                 };
 
                 const iaValue = document.getElementById('ia').value.trim();
@@ -137,8 +152,11 @@ function processCustomExcel() {
                             return (-Math.abs(parseFloat(saValue))).toString();
                         }
 
-                        // Handle Load combinations
-                        
+                        // Handle IPref case-insensitively
+                        if (cellStr.toLowerCase() === 'ipref') {
+                            return document.getElementById('p1').value.trim() || cell;
+                        }
+
                         // Handle Velocities
                         if (cellStr.toLowerCase() === 'vel') {
                             return replacements['VEL'];
@@ -202,11 +220,14 @@ function processCustomExcel() {
                             runs: headerRow.indexOf('Number Of Tests'),
                             tests: headerRow.indexOf('Tests'),
                             ips: headerRow.indexOf('Inflation Pressure [PSI]'),
-                            loads: headerRow.indexOf('Loads[Kg]'),
-                            ias: headerRow.indexOf('Inclination Angle[°]'),
-                            sa_range: headerRow.indexOf('Slip Angle[°]'),
+                            loads: headerRow.indexOf('Loads [Kg]'),
+                            ias: headerRow.indexOf('Inclination Angle [°]'),
+                            sa_range: headerRow.indexOf('Slip Angle [°]'),
                             sr_range: headerRow.indexOf('Slip Ratio [%]'),
-                            test_velocity: headerRow.indexOf('Test Velocity [Kmph]')
+                            test_velocity: headerRow.indexOf('Test Velocity [Kmph]'),
+                            cleat_orientation: headerRow.indexOf('Cleat Orientation (w.r.t axial direction) [°]'),
+                            displacement: headerRow.indexOf('Displacement [mm]'),
+                            protocol: headerRow.indexOf('Protocol')
                         };
 
                         // Extract data rows
@@ -215,14 +236,17 @@ function processCustomExcel() {
                             if (!row || !row[columns.runs]) continue;
 
                             extractedData.push({
+                                protocol: row[columns.protocol]?.toString() || '',
                                 number_of_runs: parseInt(row[columns.runs]),
                                 tests: row[columns.tests]?.toString() || '',
-                                ips: row[columns.ips]?.toString() || '',
+                                inflation_pressure: row[columns.ips]?.toString() || '',
                                 loads: row[columns.loads]?.toString() || '',
-                                ias: row[columns.ias]?.toString() || '',
-                                sa_range: row[columns.sa_range]?.toString() || '',
-                                sr_range: row[columns.sr_range]?.toString() || '',
-                                test_velocity: row[columns.test_velocity]?.toString() || ''
+                                inclination_angle: row[columns.ias]?.toString() || '',
+                                slip_angle: row[columns.sa_range]?.toString() || '',
+                                slip_ratio: row[columns.sr_range]?.toString() || '',
+                                test_velocity: row[columns.test_velocity]?.toString() || '',
+                                cleat_orientation: row[columns.cleat_orientation]?.toString() || '',
+                                displacement: row[columns.displacement]?.toString() || ''
                             });
                         }
                     });
@@ -232,7 +256,7 @@ function processCustomExcel() {
                     }
 
                     // Store the extracted data
-                    return fetch('/api/store-excel-data', {
+                    return fetch('/api/store-custom-data', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -252,6 +276,8 @@ function processCustomExcel() {
                 load1_kg: document.getElementById('l1').value,
                 load2_kg: document.getElementById('l2').value,
                 load3_kg: document.getElementById('l3').value,
+                load4_kg: document.getElementById('l4').value,
+                load5_kg: document.getElementById('l5').value,
                 pressure1: document.getElementById('p1').value,
                 pressure2: document.getElementById('p2').value,
                 pressure3: document.getElementById('p3').value,
@@ -266,7 +292,8 @@ function processCustomExcel() {
             return fetch('/api/generate-parameters', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Referer': '/custom.html'
                 },
                 body: JSON.stringify(parameterData)
             });

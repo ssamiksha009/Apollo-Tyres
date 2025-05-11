@@ -215,6 +215,31 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                 console.log('CDTire data table created successfully');
             });
 
+            // Create the custom_data table if it doesn't exist
+            const createCustomDataTable = `
+                CREATE TABLE IF NOT EXISTS custom_data (
+                    number_of_runs INT,
+                    protocol VARCHAR(255),
+                    tests VARCHAR(255),
+                    inflation_pressure VARCHAR(255),
+                    loads VARCHAR(255),
+                    inclination_angle VARCHAR(255),
+                    slip_angle VARCHAR(255),
+                    slip_ratio VARCHAR(255),
+                    test_velocity VARCHAR(255),
+                    cleat_orientation VARCHAR(255),
+                    displacement VARCHAR(255)
+                )
+            `;
+
+            pool.query(createCustomDataTable, (err) => {
+                if (err) {
+                    console.error('Error creating custom_data table:', err);
+                    return;
+                }
+                console.log('Custom data table created successfully');
+            });
+
             return pool;
         } catch (err) {
             console.error(`Error connecting to PostgreSQL database (attempt ${retries + 1}):`, err);
@@ -375,6 +400,40 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+// Configure multer for custom protocol file upload
+const customProtocolStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const dir = path.join(__dirname, 'protocol');
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir);
+        }
+        cb(null, dir);
+    },
+    filename: function (req, file, cb) {
+        // Save as Custom.xlsx
+        cb(null, 'Custom.xlsx');
+    }
+});
+
+const uploadCustomProtocol = multer({ storage: customProtocolStorage });
+
+// Add new endpoint for uploading custom protocol file
+app.post('/api/upload-custom-protocol', uploadCustomProtocol.single('customProtocolFile'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            message: 'No file received'
+        });
+    }
+
+    res.json({
+        success: true,
+        message: 'Custom protocol file uploaded successfully',
+        filename: 'Custom.xlsx'
+    });
+});
+
 // Add new endpoint for saving Excel files
 app.post('/api/save-excel', upload.single('excelFile'), (req, res) => {
     if (!req.file) {
@@ -476,6 +535,18 @@ function generateRowSpecificInp(row, protocol, runPath) {
                 inpContent += `*cleat = ${row.cleat || ''}\n`;
                 inpContent += `*road_surface = ${row.road_surface || ''}\n`;
                 break;
+            case 'custom':
+                inpContent += `*protocol = ${row.protocol || 'Custom'}\n`;
+                inpContent += `*tests = ${row.tests || ''}\n`;
+                inpContent += `*inflation_pressure = ${row.inflation_pressure || ''}\n`;
+                inpContent += `*loads = ${row.loads || ''}\n`;
+                inpContent += `*inclination_angle = ${row.inclination_angle || ''}\n`;
+                inpContent += `*slip_angle = ${row.slip_angle || ''}\n`;
+                inpContent += `*slip_ratio = ${row.slip_ratio || ''}\n`;
+                inpContent += `*test_velocity = ${row.test_velocity || ''}\n`;
+                inpContent += `*cleat_orientation = ${row.cleat_orientation || ''}\n`;
+                inpContent += `*displacement = ${row.displacement || ''}\n`;
+                break;
         }
 
         // Write the row-specific .inp file
@@ -560,6 +631,8 @@ app.get('/api/read-protocol-excel', (req, res) => {
         fileName = 'MF6pt2.xlsx';
     } else if (referer.includes('cdtire.html')) {
         fileName = 'CDTire.xlsx';
+    } else if (referer.includes('custom.html')) {
+        fileName = 'Custom.xlsx';
     } else {
         return res.status(400).json({
             success: false,
@@ -931,6 +1004,101 @@ app.get('/api/get-cdtire-summary', (req, res) => {
     });
 });
 
+// Add Custom data endpoints
+app.post('/api/store-custom-data', (req, res) => {
+    const { data } = req.body;
+    
+    if (!Array.isArray(data) || !data.length) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid data format'
+        });
+    }
+
+    const truncateQuery = 'TRUNCATE TABLE custom_data';
+    db.query(truncateQuery, (truncateErr) => {
+        if (truncateErr) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error clearing existing data'
+            });
+        }
+
+        // PostgreSQL doesn't support the VALUES ? syntax, use individual inserts with Promise.all
+        const insertPromises = data.map(row => {
+            const insertQuery = `
+                INSERT INTO custom_data 
+                (number_of_runs, protocol, tests, inflation_pressure, loads,
+                 inclination_angle, slip_angle, slip_ratio, test_velocity, 
+                 cleat_orientation, displacement)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            `;
+            
+            return db.query(insertQuery, [
+                row.number_of_runs || 0,
+                row.protocol || '',
+                row.tests || '',
+                row.inflation_pressure || '',
+                row.loads || '',
+                row.inclination_angle || '',
+                row.slip_angle || '',
+                row.slip_ratio || '',
+                row.test_velocity || '',
+                row.cleat_orientation || '',
+                row.displacement || ''
+            ]);
+        });
+
+        Promise.all(insertPromises)
+            .then(() => {
+                res.json({
+                    success: true,
+                    message: 'Data stored successfully'
+                });
+            })
+            .catch(err => {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Error storing data'
+                });
+            });
+    });
+});
+
+app.get('/api/get-custom-data', (req, res) => {
+    const query = 'SELECT * FROM custom_data ORDER BY number_of_runs';
+    db.query(query, (err, results) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching data'
+            });
+        }
+        res.json(results.rows); // Using results.rows for PostgreSQL
+    });
+});
+
+app.get('/api/get-custom-summary', (req, res) => {
+    const query = `
+        SELECT tests, COUNT(*) as count
+        FROM custom_data
+        WHERE tests IS NOT NULL AND tests != ''
+        GROUP BY tests
+        ORDER BY count DESC
+    `;
+    
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error('Error fetching Custom summary:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching test summary'
+            });
+        }
+        res.json(results.rows || []);
+    });
+});
+
 // Add new endpoints for folder management
 app.post('/api/clear-folders', (req, res) => {
     const { projectName, protocol } = req.body;
@@ -1010,6 +1178,8 @@ app.post('/api/generate-parameters', (req, res) => {
             templatePath = path.join(__dirname, 'abaqus', 'ftire.inc');
         } else if (referer.includes('cdtire.html')) {
             templatePath = path.join(__dirname, 'abaqus', 'cdtire.inc');
+        } else if (referer.includes('custom.html')) {
+            templatePath = path.join(__dirname, 'abaqus', 'custom.inc');
         } else {
             throw new Error('Unknown protocol');
         }

@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const mf52Table = document.getElementById('mf52Table');
     const ftireTable = document.getElementById('ftireTable');
     const cdtireTable = document.getElementById('cdtireTable');
+    const customTable = document.getElementById('customTable');
     let fetchEndpoint;
 
     // Hide all tables first
@@ -56,6 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
     mf52Table.style.display = 'none';
     ftireTable.style.display = 'none';
     cdtireTable.style.display = 'none';
+    customTable.style.display = 'none';
 
     // Show appropriate table and set endpoint
     if (referer.includes('mf52.html')) {
@@ -70,6 +72,9 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (referer.includes('cdtire.html')) {
         fetchEndpoint = '/api/get-cdtire-data';
         cdtireTable.style.display = 'table';
+    } else if (referer.includes('custom.html')) {
+        fetchEndpoint = '/api/get-custom-data';
+        customTable.style.display = 'table';
     } else {
         document.getElementById('data-container').innerHTML = 
             '<p class="error-message">Please select a protocol first</p>';
@@ -86,6 +91,8 @@ document.addEventListener('DOMContentLoaded', function() {
         protocolTitle.textContent = 'FTire Protocol';
     } else if (referer.includes('cdtire.html')) {
         protocolTitle.textContent = 'CDTire Protocol';
+    } else if (referer.includes('custom.html')) {
+        protocolTitle.textContent = 'Custom Protocol';
     }
 
     // Fetch and display appropriate data
@@ -100,6 +107,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 displayFTireData(data);
             } else if (referer.includes('cdtire.html')) {
                 displayCDTireData(data);
+            } else if (referer.includes('custom.html')) {
+                displayCustomData(data);
             }
             // Update status indicators after displaying data
             updateStatusIndicators();
@@ -277,6 +286,46 @@ function displayCDTireData(data) {
     });
 }
 
+function displayCustomData(data) {
+    const tableBody = document.getElementById('customTableBody');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '';
+    
+    data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${row.number_of_runs}</td>
+            <td>${row.protocol || 'Custom'}</td>
+            <td>${row.tests}</td>
+            <td>${row.inflation_pressure}</td>
+            <td>${row.loads}</td>
+            <td>${row.inclination_angle}</td>
+            <td>${row.slip_angle}</td>
+            <td>${row.slip_ratio}</td>
+            <td>${row.test_velocity}</td>
+            <td>${row.cleat_orientation}</td>
+            <td>${row.displacement}</td>
+            <td class="status-cell">
+                <span class="status-indicator">Not started ✕</span>
+            </td>
+            <td class="run-button-cell">
+                ${createRunButton(row.number_of_runs)}
+            </td>
+        `;
+        tableBody.appendChild(tr);
+    });
+
+    // Add event listeners to run buttons
+    document.querySelectorAll('.row-run-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const runNumber = this.getAttribute('data-run');
+            runSingleAnalysis(runNumber);
+        });
+    });
+}
+
 async function runSingleAnalysis(runNumber) {
     const projectName = sessionStorage.getItem('currentProject');
     if (!projectName) {
@@ -345,6 +394,21 @@ async function runSingleAnalysis(runNumber) {
                 slip_range: cells[8].textContent,
                 cleat: cells[9].textContent,
                 road_surface: cells[10].textContent
+            };
+            break;
+        case 'custom':
+            rowData = {
+                number_of_runs: cells[0].textContent,
+                protocol: cells[1].textContent,
+                tests: cells[2].textContent,
+                inflation_pressure: cells[3].textContent,
+                loads: cells[4].textContent,
+                inclination_angle: cells[5].textContent,
+                slip_angle: cells[6].textContent,
+                slip_ratio: cells[7].textContent,
+                test_velocity: cells[8].textContent,
+                cleat_orientation: cells[9].textContent,
+                displacement: cells[10].textContent
             };
             break;
     }
@@ -512,6 +576,21 @@ document.getElementById('runBtn').addEventListener('click', async function() {
                     slip_range: cells[8].textContent,
                     cleat: cells[9].textContent,
                     road_surface: cells[10].textContent
+                };
+                break;
+            case 'custom':
+                data = {
+                    ...data,
+                    protocol: cells[1].textContent,
+                    tests: cells[2].textContent,
+                    inflation_pressure: cells[3].textContent,
+                    loads: cells[4].textContent,
+                    inclination_angle: cells[5].textContent,
+                    slip_angle: cells[6].textContent,
+                    slip_ratio: cells[7].textContent,
+                    test_velocity: cells[8].textContent,
+                    cleat_orientation: cells[9].textContent,
+                    displacement: cells[10].textContent
                 };
                 break;
         }
