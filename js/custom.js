@@ -62,7 +62,7 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                 throw new Error(data.message || 'Failed to upload mesh file');
             }
             // Continue with Excel processing after successful mesh file upload
-            processMFExcel();
+            processCustomExcel();
         })
         .catch(error => {
             errorMessage.style.color = '#d9534f';
@@ -70,12 +70,12 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         });
     } else {
         // Proceed without mesh file upload
-        processMFExcel();
+        processCustomExcel();
     }
 });
 
 // Extract Excel processing to a separate function
-function processMFExcel() {
+function processCustomExcel() {
     const errorMessage = document.getElementById('errorMessage');
     
     // Continue with Excel processing

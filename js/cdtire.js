@@ -11,7 +11,7 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         load3_kg: document.getElementById('l3').value,
         load4_kg: document.getElementById('l4').value,
         load5_kg: document.getElementById('l5').value,
-        pressure: document.getElementById('p2').value,
+        pressure1: document.getElementById('p1').value,
         speed_kmph: document.getElementById('vel').value,
         IA: document.getElementById('ia').value,
         SR: document.getElementById('sr').value,
@@ -49,7 +49,8 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                 'L5': document.getElementById('l5').value.trim() || null,
                 'VEL': document.getElementById('vel').value.trim() || null,
                 'SR': document.getElementById('sr').value.trim() || null,
-                'IA': document.getElementById('ia').value.trim() || null
+                'IA': document.getElementById('ia').value.trim() || null,
+                'IPref': document.getElementById('p1').value.trim() || null
             };
 
             const newSheet = jsonData.map(row => {
@@ -73,6 +74,11 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     if (cellStr === 'SR' || cellStr === '-SR') {
                         const srValue = parseFloat(document.getElementById('sr').value.trim());
                         return cellStr.startsWith('-') ? (-Math.abs(srValue)).toString() : srValue.toString();
+                    }
+                    
+                    // Handle IPref case-insensitively
+                    if (cellStr.toLowerCase() === 'ipref') {
+                        return document.getElementById('p1').value.trim();
                     }
                     
                     // Handle other replacements

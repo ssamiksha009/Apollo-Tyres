@@ -33,6 +33,9 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         case 'CDTire':
             window.location.href = '/cdtire.html';
             break;
+        case 'Custom':
+            window.location.href = '/custom.html';
+            break;
         default:
             alert('Selected: ' + project + ', ' + region + ', ' + department + ', ' + tyreSize + ', ' + protocol);
             break;
