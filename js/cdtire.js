@@ -53,11 +53,26 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                 'IPref': document.getElementById('p1').value.trim() || null
             };
 
-            const newSheet = jsonData.map(row => {
+            const newSheet = jsonData.map((row, rowIndex) => {
                 if (!Array.isArray(row)) return row;
-                return row.map(cell => {
+                
+                // Store original P and L values for this row
+                const originalPValues = [];
+                const originalLValues = [];
+                
+                const modifiedRow = row.map(cell => {
                     if (!cell) return cell;
                     const cellStr = String(cell).trim();
+                    
+                    // Store original P values before replacement
+                    if (cellStr.match(/^P[1-3]$/) || cellStr.toLowerCase() === 'ipref') {
+                        originalPValues.push(cellStr);
+                    }
+                    
+                    // Store original L values before replacement
+                    if (cellStr.match(/^L[1-5]$/)) {
+                        originalLValues.push(cellStr);
+                    }
                     
                     // Handle velocity cases
                     if (cellStr.toLowerCase() === 'vel') {
@@ -76,14 +91,37 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                         return cellStr.startsWith('-') ? (-Math.abs(srValue)).toString() : srValue.toString();
                     }
                     
-                    // Handle IPref case-insensitively
-                    if (cellStr.toLowerCase() === 'ipref') {
+                    // Handle P1 case-insensitively
+                    if (cellStr.toLowerCase() === 'P1') {
                         return document.getElementById('p1').value.trim();
                     }
                     
                     // Handle other replacements
                     return replacements[cellStr] || cell;
                 });
+                
+                // Find the actual end of the row (last non-empty cell + 1)
+                let lastDataIndex = modifiedRow.length - 1;
+                while (lastDataIndex >= 0 && (modifiedRow[lastDataIndex] === null || modifiedRow[lastDataIndex] === undefined || modifiedRow[lastDataIndex] === '')) {
+                    lastDataIndex--;
+                }
+                
+                // Extend row to ensure we have space for new columns
+                const extendedRow = [...modifiedRow];
+                while (extendedRow.length <= lastDataIndex + 2) {
+                    extendedRow.push('');
+                }
+                
+                // Add original P and L values in completely new columns at the end
+                if (rowIndex === 0) {
+                    extendedRow[lastDataIndex + 1] = 'Original P Values';
+                    extendedRow[lastDataIndex + 2] = 'Original L Values';
+                } else {
+                    extendedRow[lastDataIndex + 1] = originalPValues.join(', ');
+                    extendedRow[lastDataIndex + 2] = originalLValues.join(', ');
+                }
+                
+                return extendedRow;
             });
 
             const modifiedWorksheet = XLSX.utils.aoa_to_sheet(newSheet);
@@ -134,15 +172,21 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                 displacement: headerRow.indexOf('Displacement [mm]'),
                 slipRange: headerRow.indexOf('Slip range [%]'),
                 cleat: headerRow.indexOf('Cleat'),
-                roadSurface: headerRow.indexOf('Road Surface')
+                roadSurface: headerRow.indexOf('Road Surface'),
+                job: headerRow.indexOf('Job'),
+                old_job: headerRow.indexOf('Old Job')
             };
 
-            console.log('Found column indices:', columns);
+            // P and L columns are positioned right after Old Job column
+            const pColumnIndex = columns.old_job >= 0 ? columns.old_job + 1 : -1;
+            const lColumnIndex = columns.old_job >= 0 ? columns.old_job + 2 : -1;
 
-            // Verify all required columns were found
-            const missingColumns = Object.entries(columns)
-                .filter(([key, value]) => value === -1)
-                .map(([key]) => key);
+            console.log('Found column indices:', columns);
+            console.log('P column index:', pColumnIndex, 'L column index:', lColumnIndex);
+
+            // Verify only required columns were found - exclude the new optional columns from missing check
+            const requiredColumns = ['runs', 'testName', 'pressure', 'velocity', 'preload', 'camber', 'slipAngle', 'displacement', 'slipRange', 'cleat', 'roadSurface'];
+            const missingColumns = requiredColumns.filter(key => columns[key] === -1);
             
             if (missingColumns.length > 0) {
                 console.error('Missing columns:', missingColumns);
@@ -169,7 +213,11 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     displacement: cleanValue(row[columns.displacement]),
                     slip_range: cleanValue(row[columns.slipRange]),
                     cleat: cleanValue(row[columns.cleat]),
-                    road_surface: cleanValue(row[columns.roadSurface])
+                    road_surface: cleanValue(row[columns.roadSurface]),
+                    job: columns.job >= 0 ? cleanValue(row[columns.job]) : '',
+                    old_job: columns.old_job >= 0 ? cleanValue(row[columns.old_job]) : '',
+                    p: pColumnIndex >= 0 ? cleanValue(row[pColumnIndex]) : '',
+                    l: lColumnIndex >= 0 ? cleanValue(row[lColumnIndex]) : ''
                 });
             }
         });

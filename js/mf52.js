@@ -60,26 +60,41 @@ document.getElementById('submitBtn').addEventListener('click', function() {
             
             // Replace values in the sheet
             const replacements = {
-                'P2': document.getElementById('p2').value.trim() || null,  // Match Excel P2
+                'P2': document.getElementById('p2').value.trim() || null,
                 'L1': document.getElementById('l1').value.trim() || null,
                 'L2': document.getElementById('l2').value.trim() || null,
                 'L3': document.getElementById('l3').value.trim() || null,
                 'VEL': document.getElementById('vel').value.trim() || null,
-                'Vel': document.getElementById('vel').value.trim() || null,  // Added for 'Vel' variant
-                'vel': document.getElementById('vel').value.trim() || null,  // Added for 'vel' variant
+                'Vel': document.getElementById('vel').value.trim() || null,
+                'vel': document.getElementById('vel').value.trim() || null,
             };
 
             const iaValue = document.getElementById('ia').value.trim();
             const srValue = document.getElementById('sr').value.trim();
             const saValue = document.getElementById('sa').value.trim();
 
-            // Create new sheet with replacements
-            const newSheet = jsonData.map(row => {
+            // Create new sheet with replacements and preserve original P/L values
+            const newSheet = jsonData.map((row, rowIndex) => {
                 if (!Array.isArray(row)) return row;
-                return row.map(cell => {
+                
+                // Store original P and L values for this row
+                const originalPValues = [];
+                const originalLValues = [];
+                
+                const modifiedRow = row.map(cell => {
                     if (cell === null || cell === undefined) return cell;
                     
                     const cellStr = String(cell).trim();
+                    
+                    // Store original P values before replacement
+                    if (cellStr.match(/^P[1-3]$/)) {
+                        originalPValues.push(cellStr);
+                    }
+                    
+                    // Store original L values before replacement
+                    if (cellStr.match(/^L[1-5]$/)) {
+                        originalLValues.push(cellStr);
+                    }
 
                     // Case-insensitive velocity check
                     if (cellStr.toLowerCase() === 'vel') {
@@ -101,6 +116,21 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     
                     return cell;
                 });
+                
+                // Add original P and L values as new columns at the end
+                const extendedRow = [...modifiedRow];
+                
+                // Add header for first row
+                if (rowIndex === 0) {
+                    extendedRow.push('Original P Values', 'Original L Values');
+                } else {
+                    extendedRow.push(
+                        originalPValues.join(', '),
+                        originalLValues.join(', ')
+                    );
+                }
+                
+                return extendedRow;
             });
 
             const modifiedWorksheet = XLSX.utils.aoa_to_sheet(newSheet);
@@ -151,8 +181,14 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                         ia: headerRow.indexOf('Inclination Angle[°]'),
                         sa: headerRow.indexOf('Slip Angle[°]'),
                         sr: headerRow.indexOf('Slip Ratio [%]'),
-                        velocity: headerRow.indexOf('Test Velocity [Kmph]')
+                        velocity: headerRow.indexOf('Test Velocity [Kmph]'),
+                        job: headerRow.indexOf('Job'),
+                        old_job: headerRow.indexOf('Old Job')
                     };
+
+                    // P and L columns are positioned right after Old Job column
+                    const pColumnIndex = columns.old_job >= 0 ? columns.old_job + 1 : -1;
+                    const lColumnIndex = columns.old_job >= 0 ? columns.old_job + 2 : -1;
 
                     // Extract data rows
                     for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
@@ -167,7 +203,11 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                             inclination_angle: row[columns.ia]?.toString() || '',
                             slip_angle: row[columns.sa]?.toString() || '',
                             slip_ratio: row[columns.sr]?.toString() || '',
-                            test_velocity: row[columns.velocity]?.toString() || ''
+                            test_velocity: row[columns.velocity]?.toString() || '',
+                            job: columns.job >= 0 ? (row[columns.job]?.toString() || '') : '',
+                            old_job: columns.old_job >= 0 ? (row[columns.old_job]?.toString() || '') : '',
+                            p: pColumnIndex >= 0 ? (row[pColumnIndex]?.toString() || '') : '',
+                            l: lColumnIndex >= 0 ? (row[lColumnIndex]?.toString() || '') : ''
                         });
                     }
                 });

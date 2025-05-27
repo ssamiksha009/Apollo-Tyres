@@ -83,17 +83,32 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                 'VEL': document.getElementById('vel').value.trim() || null,
                 'Vel': document.getElementById('vel').value.trim() || null,
                 'vel': document.getElementById('vel').value.trim() || null,
-                'SR': document.getElementById('sr').value.trim() || null,  // Added SR
-                'SA': document.getElementById('sa').value.trim() || null,  // Added SA
-                'IA': document.getElementById('ia').value.trim() || null   // Added IA
+                'SR': document.getElementById('sr').value.trim() || null,
+                'SA': document.getElementById('sa').value.trim() || null,
+                'IA': document.getElementById('ia').value.trim() || null
             };
 
-            // Create new sheet with replacements
-            const newSheet = jsonData.map(row => {
+            // Create new sheet with replacements and preserve original P/L values
+            const newSheet = jsonData.map((row, rowIndex) => {
                 if (!Array.isArray(row)) return row;
-                return row.map(cell => {
+                
+                // Store original P and L values for this row
+                const originalPValues = [];
+                const originalLValues = [];
+                
+                const modifiedRow = row.map(cell => {
                     if (cell === null || cell === undefined) return cell;
                     const cellStr = String(cell).trim();
+                    
+                    // Store original P values before replacement
+                    if (cellStr.match(/^P[1-3]$/)) {
+                        originalPValues.push(cellStr);
+                    }
+                    
+                    // Store original L values before replacement
+                    if (cellStr.match(/^L[1-5]$/)) {
+                        originalLValues.push(cellStr);
+                    }
                     
                     // Handle velocity cases
                     if (cellStr.toLowerCase() === 'vel') {
@@ -119,6 +134,21 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     // Handle other direct replacements
                     return replacements[cellStr] || cell;
                 });
+                
+                // Add original P and L values as new columns at the end
+                const extendedRow = [...modifiedRow];
+                
+                // Add header for first row
+                if (rowIndex === 0) {
+                    extendedRow.push('Original P Values', 'Original L Values');
+                } else {
+                    extendedRow.push(
+                        originalPValues.join(', '),
+                        originalLValues.join(', ')
+                    );
+                }
+                
+                return extendedRow;
             });
 
             const modifiedWorksheet = XLSX.utils.aoa_to_sheet(newSheet);
@@ -175,8 +205,14 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                         longitudinalSlip: headerRow.indexOf('Longitudinal Slip (%)'),
                         slipAngle: headerRow.indexOf('Slip Angle (deg)'),
                         inclinationAngle: headerRow.indexOf('Inclination Angle (deg)'),
-                        cleatOrientation: headerRow.indexOf('Cleat Orientation [w.r.t axial direction] (deg)')
+                        cleatOrientation: headerRow.indexOf('Cleat Orientation [w.r.t axial direction] (deg)'),
+                        job: headerRow.indexOf('Job'),
+                        old_job: headerRow.indexOf('Old Job')
                     };
+
+                    // P and L columns are positioned right after Old Job column
+                    const pColumnIndex = columns.old_job >= 0 ? columns.old_job + 1 : -1;
+                    const lColumnIndex = columns.old_job >= 0 ? columns.old_job + 2 : -1;
 
                     // Extract data in exact order matching the database columns
                     for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
@@ -193,7 +229,11 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                             longitudinal_slip: row[columns.longitudinalSlip]?.toString() || '',
                             slip_angle: row[columns.slipAngle]?.toString() || '',
                             inclination_angle: row[columns.inclinationAngle]?.toString() || '',
-                            cleat_orientation: row[columns.cleatOrientation]?.toString() || ''
+                            cleat_orientation: row[columns.cleatOrientation]?.toString() || '',
+                            job: columns.job >= 0 ? (row[columns.job]?.toString() || '') : '',
+                            old_job: columns.old_job >= 0 ? (row[columns.old_job]?.toString() || '') : '',
+                            p: pColumnIndex >= 0 ? (row[pColumnIndex]?.toString() || '') : '',
+                            l: lColumnIndex >= 0 ? (row[lColumnIndex]?.toString() || '') : ''
                         });
                     }
                 });

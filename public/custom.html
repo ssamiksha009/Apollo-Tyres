@@ -30,15 +30,15 @@
                 <h3>Pressure</h3>
                 <div class="input-row">
                     <label for="p1">P1:</label>
-                    <input type="text" id="p1" name="p1" placeholder="Enter P1 value in psi" pattern="[1-9][0-9]*(\.[0-9]+)?">
+                    <input type="text" id="p1" name="p1" placeholder="Enter P1 value in psi" pattern="[0-9]*\.?[0-9]+">
                 </div>
                 <div class="input-row">
                     <label for="p2">P2:</label>
-                    <input type="text" id="p2" name="p2" placeholder="Enter P2 value in psi" pattern="[1-9][0-9]*(\.[0-9]+)?">
+                    <input type="text" id="p2" name="p2" placeholder="Enter P2 value in psi" pattern="[0-9]*\.?[0-9]+">
                 </div>
                 <div class="input-row">
                     <label for="p3">P3:</label>
-                    <input type="text" id="p3" name="p3" placeholder="Enter P3 value in psi" pattern="[1-9][0-9]*(\.[0-9]+)?">
+                    <input type="text" id="p3" name="p3" placeholder="Enter P3 value in psi" pattern="[0-9]*\.?[0-9]+">
                 </div>
             </div>
             
@@ -47,23 +47,23 @@
                 <h3>Load</h3>
                 <div class="input-row">
                     <label for="l1">L1:</label>
-                    <input type="text" id="l1" name="l1" placeholder="Enter L1 value in Kg" pattern="\d+(\.\d+)?">
+                    <input type="text" id="l1" name="l1" placeholder="Enter L1 value in Kg" pattern="[0-9]*\.?[0-9]+">
                 </div>
                 <div class="input-row">
                     <label for="l2">L2:</label>
-                    <input type="text" id="l2" name="l2" placeholder="Enter L2 value in Kg" pattern="\d+(\.\d+)?">
+                    <input type="text" id="l2" name="l2" placeholder="Enter L2 value in Kg" pattern="[0-9]*\.?[0-9]+">
                 </div>
                 <div class="input-row">
                     <label for="l3">L3:</label>
-                    <input type="text" id="l3" name="l3" placeholder="Enter L3 value in Kg" pattern="\d+(\.\d+)?">
+                    <input type="text" id="l3" name="l3" placeholder="Enter L3 value in Kg" pattern="[0-9]*\.?[0-9]+">
                 </div>
                 <div class="input-row">
                     <label for="l4">L4:</label>
-                    <input type="text" id="l4" name="l4" placeholder="Enter L4 value in Kg" pattern="\d+(\.\d+)?">
+                    <input type="text" id="l4" name="l4" placeholder="Enter L4 value in Kg" pattern="[0-9]*\.?[0-9]+">
                 </div>
                 <div class="input-row">
                     <label for="l5">L5:</label>
-                    <input type="text" id="l5" name="l5" placeholder="Enter L5 value in Kg" pattern="\d+(\.\d+)?">
+                    <input type="text" id="l5" name="l5" placeholder="Enter L5 value in Kg" pattern="[0-9]*\.?[0-9]+">
                 </div>
             </div>
             
@@ -72,7 +72,7 @@
                 <h3>Speed</h3>
                 <div class="input-row">
                     <label for="vel">VEL:</label>
-                    <input type="text" id="vel" name="vel" placeholder="Enter velocity in kmph" pattern="\d+(\.\d+)?">
+                    <input type="text" id="vel" name="vel" placeholder="Enter velocity in kmph" pattern="[0-9]*\.?[0-9]+">
                 </div>
             </div>
 
@@ -81,7 +81,7 @@
                 <h3>Inclination Angle</h3>
                 <div class="input-row">
                     <label for="ia">IA:</label>
-                    <input type="text" id="ia" name="ia" placeholder="Enter IA value in degree" pattern="\d+(\.\d+)?">
+                    <input type="text" id="ia" name="ia" placeholder="Enter IA value in degree" pattern="[0-9]*\.?[0-9]+">
                 </div>
             </div>
 
@@ -90,27 +90,26 @@
                 <h3>Slip Angle</h3>
                 <div class="input-row">
                     <label for="sa">SA:</label>
-                    <input type="text" id="sa" name="sa" placeholder="Enter SA value in degree" pattern="\d+(\.\d+)?">
+                    <input type="text" id="sa" name="sa" placeholder="Enter SA value in degree" pattern="[0-9]*\.?[0-9]+">
                 </div>
                 <h3>Slip Ratio</h3>
                 <div class="input-row">
                     <label for="sr">SR:</label>
-                    <input type="text" id="sr" name="sr" placeholder="Enter SR value in %" pattern="\d+(\.\d+)?">
+                    <input type="text" id="sr" name="sr" placeholder="Enter SR value in %" pattern="[0-9]*\.?[0-9]+">
                 </div>
             </div>
-
 
             <!-- Rim Diameter Input -->
             <div class="input-group">
                 <h3>Rim Diameter</h3>
                 <div class="input-row">
                     <label for="rimDiameter">RD:</label>
-                    <input type="number" id="rimDiameter" name="rimDiameter" placeholder="Enter RD value in mm">
+                    <input type="text" id="rimDiameter" name="rimDiameter" placeholder="Enter RD value in mm" pattern="[0-9]*\.?[0-9]+">
                 </div>
                 <h3>Rim Width</h3>
                 <div class="input-row">
                     <label for="rimWidth">RW:</label>
-                    <input type="number" id="rimWidth" name="rimWidth" placeholder="Enter RW value in mm">
+                    <input type="text" id="rimWidth" name="rimWidth" placeholder="Enter RW value in mm" pattern="[0-9]*\.?[0-9]+">
                 </div>
             </div>
 

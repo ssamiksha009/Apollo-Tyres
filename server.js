@@ -134,10 +134,14 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                     ias VARCHAR(255),
                     sa_range VARCHAR(255),
                     sr_range VARCHAR(255),
-                    test_velocity VARCHAR(255)
+                    test_velocity VARCHAR(255),
+                    job VARCHAR(255),
+                    old_job VARCHAR(255),
+                    p VARCHAR(255),
+                    l VARCHAR(255)
                 )
             `;
-
+            
             pool.query(createMFDataTable, (err) => {
                 if (err) {
                     console.error('Error creating mf_data table:', err);
@@ -156,7 +160,11 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                     inclination_angle VARCHAR(255),
                     slip_angle VARCHAR(255),
                     slip_ratio VARCHAR(255),
-                    test_velocity VARCHAR(255)
+                    test_velocity VARCHAR(255),
+                    job VARCHAR(255),
+                    old_job VARCHAR(255),
+                    p VARCHAR(255),
+                    l VARCHAR(255)
                 )
             `;
 
@@ -179,7 +187,11 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                     longitudinal_slip VARCHAR(255),
                     slip_angle VARCHAR(255),
                     inclination_angle VARCHAR(255),
-                    cleat_orientation VARCHAR(255)
+                    cleat_orientation VARCHAR(255),
+                    job VARCHAR(255),
+                    old_job VARCHAR(255),
+                    p VARCHAR(255),
+                    l VARCHAR(255)
                 )
             `;
 
@@ -203,7 +215,11 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                     displacement VARCHAR(255),
                     slip_range VARCHAR(255),
                     cleat VARCHAR(255),
-                    road_surface VARCHAR(255)
+                    road_surface VARCHAR(255),
+                    job VARCHAR(255),
+                    old_job VARCHAR(255),
+                    p VARCHAR(255),
+                    l VARCHAR(255)
                 )
             `;
 
@@ -228,7 +244,11 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                     slip_ratio VARCHAR(255),
                     test_velocity VARCHAR(255),
                     cleat_orientation VARCHAR(255),
-                    displacement VARCHAR(255)
+                    displacement VARCHAR(255),
+                    job VARCHAR(255),
+                    old_job VARCHAR(255),
+                    p VARCHAR(255),
+                    l VARCHAR(255)
                 )
             `;
 
@@ -584,8 +604,8 @@ app.post('/api/store-excel-data', (req, res) => {
         const insertPromises = data.map(row => {
             const insertQuery = `
                 INSERT INTO mf_data 
-                (number_of_runs, tests, ips, loads, ias, sa_range, sr_range, test_velocity)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                (number_of_runs, tests, ips, loads, ias, sa_range, sr_range, test_velocity, job, old_job, p, l)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             `;
             
             return db.query(insertQuery, [
@@ -596,7 +616,11 @@ app.post('/api/store-excel-data', (req, res) => {
                 row.ias,
                 row.sa_range,
                 row.sr_range,
-                row.test_velocity
+                row.test_velocity,
+                row.job || '',
+                row.old_job || '',
+                row.p || '',
+                row.l || ''
             ]);
         });
 
@@ -752,8 +776,8 @@ app.post('/api/store-mf52-data', (req, res) => {
             const insertQuery = `
                 INSERT INTO mf52_data 
                 (number_of_runs, tests, inflation_pressure, loads, inclination_angle, 
-                 slip_angle, slip_ratio, test_velocity)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 slip_angle, slip_ratio, test_velocity, job, old_job, p, l)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             `;
             
             return db.query(insertQuery, [
@@ -764,7 +788,11 @@ app.post('/api/store-mf52-data', (req, res) => {
                 row.inclination_angle,
                 row.slip_angle,
                 row.slip_ratio,
-                row.test_velocity
+                row.test_velocity,
+                row.job || '',
+                row.old_job || '',
+                row.p || '',
+                row.l || ''
             ]);
         });
 
@@ -845,8 +873,8 @@ app.post('/api/store-ftire-data', (req, res) => {
             const insertQuery = `
                 INSERT INTO ftire_data 
                 (number_of_runs, tests, loads, inflation_pressure, test_velocity,
-                 longitudinal_slip, slip_angle, inclination_angle, cleat_orientation)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 longitudinal_slip, slip_angle, inclination_angle, cleat_orientation, job, old_job, p, l)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             `;
             
             return db.query(insertQuery, [
@@ -858,7 +886,11 @@ app.post('/api/store-ftire-data', (req, res) => {
                 row.longitudinal_slip || '',
                 row.slip_angle || '',
                 row.inclination_angle || '',
-                row.cleat_orientation || ''
+                row.cleat_orientation || '',
+                row.job || '',
+                row.old_job || '',
+                row.p || '',
+                row.l || ''
             ]);
         });
 
@@ -935,8 +967,8 @@ app.post('/api/store-cdtire-data', (req, res) => {
             const insertQuery = `
                 INSERT INTO cdtire_data 
                 (number_of_runs, test_name, inflation_pressure, velocity, preload,
-                 camber, slip_angle, displacement, slip_range, cleat, road_surface)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 camber, slip_angle, displacement, slip_range, cleat, road_surface, job, old_job, p, l)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             `;
             
             return db.query(insertQuery, [
@@ -950,7 +982,11 @@ app.post('/api/store-cdtire-data', (req, res) => {
                 row.displacement || '',
                 row.slip_range || '',
                 row.cleat || '',
-                row.road_surface || ''
+                row.road_surface || '',
+                row.job || '',
+                row.old_job || '',
+                row.p || '',
+                row.l || ''
             ]);
         });
 
@@ -1030,8 +1066,8 @@ app.post('/api/store-custom-data', (req, res) => {
                 INSERT INTO custom_data 
                 (number_of_runs, protocol, tests, inflation_pressure, loads,
                  inclination_angle, slip_angle, slip_ratio, test_velocity, 
-                 cleat_orientation, displacement)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 cleat_orientation, displacement, job, old_job, p, l)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             `;
             
             return db.query(insertQuery, [
@@ -1045,7 +1081,11 @@ app.post('/api/store-custom-data', (req, res) => {
                 row.slip_ratio || '',
                 row.test_velocity || '',
                 row.cleat_orientation || '',
-                row.displacement || ''
+                row.displacement || '',
+                row.job || '',
+                row.old_job || '',
+                row.p || '',
+                row.l || ''
             ]);
         });
 
