@@ -285,11 +285,29 @@ function processMFExcel() {
                 },
                 body: JSON.stringify(parameterData)
             });
+        })        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.message || 'Error generating parameter file');
+            }
+            
+            // Create protocol-based folder structure immediately
+            const projectName = sessionStorage.getItem('currentProject') || 'DefaultProject';
+            return fetch('/api/create-protocol-folders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    projectName: projectName,
+                    protocol: 'MF62'
+                })
+            });
         })
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
-                throw new Error(data.message || 'Error generating parameter file');
+                throw new Error(data.message || 'Error creating protocol folders');
             }
             updateTestSummary();
             window.location.href = '/select.html';

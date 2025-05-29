@@ -479,105 +479,6 @@ function clearAbaqusFolder() {
     fs.mkdirSync(abaqusPath, { recursive: true });
 }
 
-
-
-// Add new utility function after existing ones
-function copyProtocolFiles(runPath) {
-    const files = [
-        'parameters.inc',
-        'rollingtire_brake_trac.inp',
-        'rollingtire_brake_trac1.inp',
-        'rollingtire_freeroll.inp',
-        'tiretransfer_axi_half.inp',
-        'tiretransfer_full.inp',
-        'tiretransfer_node.inp',
-        'tiretransfer_symmetric.inp'
-    ];
-
-    try {
-        files.forEach(file => {
-            const source = path.join(__dirname, 'abaqus', file);
-            const dest = path.join(runPath, file);
-            if (fs.existsSync(source)) {
-                fs.copyFileSync(source, dest);
-            }
-        });
-        return true;
-    } catch (err) {
-        console.error('Error copying files:', err);
-        return false;
-    }
-}
-
-// Add new utility function
-function generateRowSpecificInp(row, protocol, runPath) {
-    try {
-        let inpContent = '** Row Specific Data\n';
-        inpContent += '** Generated for Protocol: ' + protocol + '\n';
-        inpContent += '** Run Number: ' + row.number_of_runs + '\n\n';
-
-        // Add row data based on protocol
-        switch(protocol.toLowerCase()) {
-            case 'mf62':
-                inpContent += `*inflation_pressure = ${row.ips || ''}\n`;
-                inpContent += `*loads = ${row.loads || ''}\n`;
-                inpContent += `*inclination_angle = ${row.ias || ''}\n`;
-                inpContent += `*slip_angle = ${row.sa_range || ''}\n`;
-                inpContent += `*slip_ratio = ${row.sr_range || ''}\n`;
-                inpContent += `*velocity = ${row.test_velocity || ''}\n`;
-                break;
-            case 'mf52':
-                inpContent += `*inflation_pressure = ${row.inflation_pressure || ''}\n`;
-                inpContent += `*loads = ${row.loads || ''}\n`;
-                inpContent += `*inclination_angle = ${row.inclination_angle || ''}\n`;
-                inpContent += `*slip_angle = ${row.slip_angle || ''}\n`;
-                inpContent += `*slip_ratio = ${row.slip_ratio || ''}\n`;
-                inpContent += `*velocity = ${row.test_velocity || ''}\n`;
-                break;
-            case 'ftire':
-                inpContent += `*loads = ${row.loads || ''}\n`;
-                inpContent += `*inflation_pressure = ${row.inflation_pressure || ''}\n`;
-                inpContent += `*velocity = ${row.test_velocity || ''}\n`;
-                inpContent += `*longitudinal_slip = ${row.longitudinal_slip || ''}\n`;
-                inpContent += `*slip_angle = ${row.slip_angle || ''}\n`;
-                inpContent += `*inclination_angle = ${row.inclination_angle || ''}\n`;
-                inpContent += `*cleat_orientation = ${row.cleat_orientation || ''}\n`;
-                break;
-            case 'cdtire':
-                inpContent += `*test_name = ${row.test_name || ''}\n`;
-                inpContent += `*inflation_pressure = ${row.inflation_pressure || ''}\n`;
-                inpContent += `*velocity = ${row.velocity || ''}\n`;
-                inpContent += `*preload = ${row.preload || ''}\n`;
-                inpContent += `*camber = ${row.camber || ''}\n`;
-                inpContent += `*slip_angle = ${row.slip_angle || ''}\n`;
-                inpContent += `*displacement = ${row.displacement || ''}\n`;
-                inpContent += `*slip_range = ${row.slip_range || ''}\n`;
-                inpContent += `*cleat = ${row.cleat || ''}\n`;
-                inpContent += `*road_surface = ${row.road_surface || ''}\n`;
-                break;
-            case 'custom':
-                inpContent += `*protocol = ${row.protocol || 'Custom'}\n`;
-                inpContent += `*tests = ${row.tests || ''}\n`;
-                inpContent += `*inflation_pressure = ${row.inflation_pressure || ''}\n`;
-                inpContent += `*loads = ${row.loads || ''}\n`;
-                inpContent += `*inclination_angle = ${row.inclination_angle || ''}\n`;
-                inpContent += `*slip_angle = ${row.slip_angle || ''}\n`;
-                inpContent += `*slip_ratio = ${row.slip_ratio || ''}\n`;
-                inpContent += `*test_velocity = ${row.test_velocity || ''}\n`;
-                inpContent += `*cleat_orientation = ${row.cleat_orientation || ''}\n`;
-                inpContent += `*displacement = ${row.displacement || ''}\n`;
-                break;
-        }
-
-        // Write the row-specific .inp file
-        fs.writeFileSync(path.join(runPath, `row_${row.number_of_runs}.inp`), inpContent);
-        return true;
-    } catch (err) {
-        console.error('Error generating row-specific inp file:', err);
-        return false;
-    }
-}
-
 // Replace the existing store-excel-data endpoint with this modified version
 app.post('/api/store-excel-data', (req, res) => {
     const { data } = req.body;
@@ -1158,52 +1059,6 @@ app.post('/api/clear-folders', (req, res) => {
     }
 });
 
-app.post('/api/create-project-folders', (req, res) => {
-    const { projectName, protocol, data } = req.body;
-    
-    try {
-        const combinedFolderName = `${projectName}_${protocol}`;
-        const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
-
-        // Create base project folder
-        if (!fs.existsSync(projectPath)) {
-            fs.mkdirSync(projectPath, { recursive: true });
-        }
-
-        // Create run folders
-        data.forEach(row => {
-            const runPath = path.join(projectPath, row.number_of_runs.toString());
-            if (!fs.existsSync(runPath)) {
-                fs.mkdirSync(runPath, { recursive: true });
-                
-                // Copy required files
-                const sourceFiles = [
-                    'parameters.inc',
-                    'tiretransfer_node.inp',
-                    'tiretransfer_axi_half.inp',
-                    'tiretransfer_symmetric.inp',
-                    'tiretransfer_full.inp',
-                    'rollingtire_brake_trac.inp',
-                    'rollingtire_brake_trac1.inp',
-                    'rollingtire_freeroll.inp'
-                ];
-
-                sourceFiles.forEach(file => {
-                    const sourcePath = path.join(__dirname, 'abaqus', file);
-                    fs.existsSync(sourcePath) && fs.copyFileSync(sourcePath, path.join(runPath, file));
-                });
-            }
-        });
-
-        res.json({ success: true, message: 'Project folders created successfully' });
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            message: 'Error creating project folders: ' + err.message
-        });
-    }
-});
-
 app.post('/api/generate-parameters', (req, res) => {
     try {
         const referer = req.headers.referer || '';
@@ -1272,25 +1127,6 @@ app.post('/api/generate-parameters', (req, res) => {
     }
 });
 
-// Add new endpoint for checking analysis status
-app.get('/api/check-analysis-status', (req, res) => {
-    const { projectName, protocol, run } = req.query;
-    const combinedFolderName = `${projectName}_${protocol}`;
-    const runPath = path.join(__dirname, 'abaqus', combinedFolderName, run);
-    const statusFile = path.join(runPath, 'analysis_status.txt');
-
-    try {
-        if (fs.existsSync(statusFile)) {
-            const status = fs.readFileSync(statusFile, 'utf8').trim();
-            res.json({ status });
-        } else {
-            res.json({ status: 'Not started' });
-        }
-    } catch (err) {
-        res.json({ status: 'Error' });
-    }
-});
-
 app.post('/api/run-abaqus-jobs', (req, res) => {
     const { projectName, protocol, runNumber } = req.body;
     const combinedFolderName = `${projectName}_${protocol}`;
@@ -1308,10 +1144,6 @@ app.post('/api/run-abaqus-jobs', (req, res) => {
         const args = [pythonScript, projectPath];
         if (runNumber) {
             args.push(runNumber);
-            
-            // Create status file immediately
-            const statusFile = path.join(projectPath, runNumber, 'analysis_status.txt');
-            fs.writeFileSync(statusFile, 'Running');
         }
 
         // Run Python script with error handling
@@ -1323,17 +1155,6 @@ app.post('/api/run-abaqus-jobs', (req, res) => {
         // Handle process errors and termination
         pythonProcess.on('error', (err) => {
             console.error('Python process error:', err);
-            if (runNumber) {
-                const statusFile = path.join(projectPath, runNumber, 'analysis_status.txt');
-                fs.writeFileSync(statusFile, 'Error');
-            }
-        });
-
-        pythonProcess.on('exit', (code) => {
-            if (code !== 0 && runNumber) {
-                const statusFile = path.join(projectPath, runNumber, 'analysis_status.txt');
-                fs.writeFileSync(statusFile, 'Error');
-            }
         });
 
         pythonProcess.unref();
@@ -1345,14 +1166,6 @@ app.post('/api/run-abaqus-jobs', (req, res) => {
 
     } catch (err) {
         console.error('Error launching process:', err);
-        if (runNumber) {
-            const statusFile = path.join(projectPath, runNumber, 'analysis_status.txt');
-            try {
-                fs.writeFileSync(statusFile, 'Error');
-            } catch (writeErr) {
-                console.error('Error writing status file:', writeErr);
-            }
-        }
         res.status(500).json({
             success: false,
             message: 'Error launching process: ' + err.message
@@ -1360,51 +1173,109 @@ app.post('/api/run-abaqus-jobs', (req, res) => {
     }
 });
 
-// Add new endpoint for copying protocol files
-app.post('/api/copy-protocol-files', (req, res) => {
-    const { projectName, protocol, runs } = req.body;
-    const combinedFolderName = `${projectName}_${protocol}`;
-    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
-
-    try {
-        runs.forEach(runNumber => {
-            const runPath = path.join(projectPath, runNumber.toString());
-            if (!fs.existsSync(runPath)) {
-                fs.mkdirSync(runPath, { recursive: true });
-            }
-            if (!copyProtocolFiles(runPath)) {
-                throw new Error(`Failed to copy files for run ${runNumber}`);
-            }
-        });
-
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({
+// Add new endpoint for protocol-based folder creation on submit
+app.post('/api/create-protocol-folders', (req, res) => {
+    const { projectName, protocol } = req.body;
+    
+    if (!projectName || !protocol) {
+        return res.status(400).json({
             success: false,
-            message: 'Error copying protocol files: ' + err.message
+            message: 'Project name and protocol are required'
         });
     }
-});
-
-// Add new endpoint for generating row-specific input files
-app.post('/api/generate-input-files', (req, res) => {
-    const { projectName, protocol, rows } = req.body;
+    
     const combinedFolderName = `${projectName}_${protocol}`;
     const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
-
+    
     try {
-        rows.forEach(row => {
-            const runPath = path.join(projectPath, row.number_of_runs.toString());
-            if (!generateRowSpecificInp(row, protocol, runPath)) {
-                throw new Error(`Failed to generate input file for run ${row.number_of_runs}`);
+        // Create base project folder
+        if (!fs.existsSync(projectPath)) {
+            fs.mkdirSync(projectPath, { recursive: true });
+        }
+        
+        // Map protocol names to their template folder names
+        const protocolMap = {
+            'MF62': 'MF6pt2',
+            'MF52': 'MF5pt2',
+            'FTire': 'FTire',
+            'CDTire': 'CDTire',
+            'Custom': 'Custom'
+        };
+        
+        const templateProtocolName = protocolMap[protocol];
+        if (!templateProtocolName) {
+            throw new Error(`Unknown protocol: ${protocol}`);
+        }
+        
+        const templatePath = path.join(__dirname, 'abaqus', 'templates', templateProtocolName);
+        
+        if (!fs.existsSync(templatePath)) {
+            throw new Error(`Template folder not found: ${templatePath}`);
+        }
+        
+        // Copy all template subfolders (P1_L1, P1_L2, etc.) to the project folder
+        const subfolders = fs.readdirSync(templatePath).filter(item => 
+            fs.statSync(path.join(templatePath, item)).isDirectory()
+        );
+        
+        if (subfolders.length === 0) {
+            throw new Error(`No subfolders found in template: ${templatePath}`);
+        }
+        
+        subfolders.forEach(subfolder => {
+            const sourceSubfolder = path.join(templatePath, subfolder);
+            const destSubfolder = path.join(projectPath, subfolder);
+            
+            // Create destination subfolder
+            if (!fs.existsSync(destSubfolder)) {
+                fs.mkdirSync(destSubfolder, { recursive: true });
             }
+            
+            // Copy all files from template subfolder recursively
+            function copyFolderSync(src, dest) {
+                if (!fs.existsSync(dest)) {
+                    fs.mkdirSync(dest, { recursive: true });
+                }
+                
+                const items = fs.readdirSync(src);
+                items.forEach(item => {
+                    const srcPath = path.join(src, item);
+                    const destPath = path.join(dest, item);
+                    
+                    if (fs.statSync(srcPath).isDirectory()) {
+                        copyFolderSync(srcPath, destPath);
+                    } else {
+                        fs.copyFileSync(srcPath, destPath);
+                    }
+                });
+            }
+            
+            copyFolderSync(sourceSubfolder, destSubfolder);
         });
-
-        res.json({ success: true });
+        
+        // Copy parameters.inc to each subfolder
+        const parametersPath = path.join(__dirname, 'abaqus', 'parameters.inc');
+        if (fs.existsSync(parametersPath)) {
+            subfolders.forEach(subfolder => {
+                const destParametersPath = path.join(projectPath, subfolder, 'parameters.inc');
+                fs.copyFileSync(parametersPath, destParametersPath);
+            });
+        } else {
+            console.warn('parameters.inc not found, skipping copy to subfolders');
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Protocol folders created successfully',
+            foldersCreated: subfolders,
+            projectPath: combinedFolderName
+        });
+        
     } catch (err) {
+        console.error('Error creating protocol folders:', err);
         res.status(500).json({
             success: false,
-            message: 'Error generating input files: ' + err.message
+            message: 'Error creating protocol folders: ' + err.message
         });
     }
 });
