@@ -28,14 +28,15 @@ def run_abaqus_job(job_name, run_path, inp_file, prev_job=None):
     """Run a single Abaqus job with proper error handling"""
     abaqus_cmd = r"D:\SIMULIA\Commands\abaqus.bat"
     
-    cmd = [abaqus_cmd, 
-           'job=' + job_name,
-           'input=' + inp_file]
+    # Build command according to specifications:
+    # abaqus job=jobname input=jobname.inp (without oldjob)
+    # abaqus job=jobname oldjob=oldjobname input=jobname.inp (with oldjob)
+    cmd = [abaqus_cmd, f'job={job_name}']
     
     if prev_job:
-        cmd.append('oldjob=' + prev_job)
+        cmd.append(f'oldjob={prev_job}')
     
-    cmd.append('int')  # Use interactive mode
+    cmd.append(f'input={inp_file}')
     
     print(f"\nStarting Abaqus job: {job_name}")
     print(f"Working directory: {run_path}")
@@ -156,9 +157,9 @@ def run_analysis(project_path, single_run=None):
 
             # Process each step
             for current_step, prev_step in analysis_sequence:
-                job_name = f"Run_{run}_{current_step}"
+                job_name = f"{current_step}"
                 inp_file = f"{current_step}.inp"
-                prev_job = f"Run_{run}_{prev_step}" if prev_step else None
+                prev_job = f"{prev_step}" if prev_step else None
                 
                 success = run_abaqus_job(job_name, run_path, inp_file, prev_job)
                 

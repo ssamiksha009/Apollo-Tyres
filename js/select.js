@@ -9,37 +9,39 @@ function updateStatusIndicators() {
     const protocol = document.querySelector('table[style*="display: table"]').id.replace('Table', '');
     const rows = document.querySelectorAll('tbody tr');
 
-    rows.forEach(row => {
+    rows.forEach(async (row) => {
         const runNumber = row.cells[0].textContent;
         const statusCell = row.querySelector('.status-indicator');
         const runButton = document.querySelector(`.row-run-btn[data-run="${runNumber}"]`);
         
-        fetch(`/api/check-analysis-status?projectName=${projectName}&protocol=${protocol}&run=${runNumber}`)
-            .then(response => response.json())
-            .then(data => {
-                // Update status indicator
-                switch(data.status) {
-                    case "Completed":
-                        statusCell.textContent = 'Completed ✓';
-                        statusCell.style.color = '#28a745';
-                        if (runButton) runButton.style.display = 'none';
-                        break;
-                    case "Running":
-                        statusCell.textContent = 'Running ⌛';
-                        statusCell.style.color = '#ffc107';
-                        if (runButton) runButton.style.display = 'none';
-                        break;
-                    case "Error":
-                        statusCell.textContent = 'Error ✕';
-                        statusCell.style.color = '#dc3545';
-                        if (runButton) runButton.style.display = 'block';
-                        break;
-                    default:
-                        statusCell.textContent = 'Not started ✕';
-                        statusCell.style.color = '#dc3545';
-                        if (runButton) runButton.style.display = 'block';
-                }
-            });
+        try {
+            // Get row data to find the folder and job name
+            const rowDataResponse = await fetch(`/api/get-row-data?protocol=${protocol}&runNumber=${runNumber}`);
+            if (!rowDataResponse.ok) return;
+            
+            const rowDataResult = await rowDataResponse.json();
+            const { p, l, job } = rowDataResult.data;
+            const folderName = `${p}_${l}`;
+            
+            // Check if the job's ODB file exists
+            const odbResponse = await fetch(`/api/check-odb-file?projectName=${projectName}&protocol=${protocol}&folderName=${folderName}&jobName=${job}`);
+            const odbResult = await odbResponse.json();
+            
+            if (odbResult.exists) {
+                statusCell.textContent = 'Completed ✓';
+                statusCell.style.color = '#28a745';
+                if (runButton) runButton.style.display = 'none';
+            } else {
+                statusCell.textContent = 'Not started ✕';
+                statusCell.style.color = '#dc3545';
+                if (runButton) runButton.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error checking status for run', runNumber, error);
+            statusCell.textContent = 'Error checking status ✕';
+            statusCell.style.color = '#dc3545';
+            if (runButton) runButton.style.display = 'block';
+        }
     });
 }
 
@@ -335,116 +337,19 @@ async function runSingleAnalysis(runNumber) {
 
     const protocol = document.querySelector('table[style*="display: table"]').id.replace('Table', '');
     
-    // Find the row and get its data
+    // Find the row and get its UI elements
     const row = document.querySelector(`tr:has(button[data-run="${runNumber}"])`);
-    const cells = row.cells;
     const statusCell = row.querySelector('.status-indicator');
     const runButton = row.querySelector('.row-run-btn');
 
-    // Prepare row data based on protocol
-    let rowData;
-    switch(protocol.toLowerCase()) {
-        case 'mf62':
-            rowData = {
-                number_of_runs: cells[0].textContent,
-                tests: cells[1].textContent,
-                ips: cells[2].textContent,
-                loads: cells[3].textContent,
-                ias: cells[4].textContent,
-                sa_range: cells[5].textContent,
-                sr_range: cells[6].textContent,
-                test_velocity: cells[7].textContent
-            };
-            break;
-        case 'mf52':
-            rowData = {
-                number_of_runs: cells[0].textContent,
-                tests: cells[1].textContent,
-                inflation_pressure: cells[2].textContent,
-                loads: cells[3].textContent,
-                inclination_angle: cells[4].textContent,
-                slip_angle: cells[5].textContent,
-                slip_ratio: cells[6].textContent,
-                test_velocity: cells[7].textContent
-            };
-            break;
-        case 'ftire':
-            rowData = {
-                number_of_runs: cells[0].textContent,
-                tests: cells[1].textContent,
-                loads: cells[2].textContent,
-                inflation_pressure: cells[3].textContent,
-                test_velocity: cells[4].textContent,
-                longitudinal_slip: cells[5].textContent,
-                slip_angle: cells[6].textContent,
-                inclination_angle: cells[7].textContent,
-                cleat_orientation: cells[8].textContent
-            };
-            break;
-        case 'cdtire':
-            rowData = {
-                number_of_runs: cells[0].textContent,
-                test_name: cells[1].textContent,
-                inflation_pressure: cells[2].textContent,
-                velocity: cells[3].textContent,
-                preload: cells[4].textContent,
-                camber: cells[5].textContent,
-                slip_angle: cells[6].textContent,
-                displacement: cells[7].textContent,
-                slip_range: cells[8].textContent,
-                cleat: cells[9].textContent,
-                road_surface: cells[10].textContent
-            };
-            break;
-        case 'custom':
-            rowData = {
-                number_of_runs: cells[0].textContent,
-                protocol: cells[1].textContent,
-                tests: cells[2].textContent,
-                inflation_pressure: cells[3].textContent,
-                loads: cells[4].textContent,
-                inclination_angle: cells[5].textContent,
-                slip_angle: cells[6].textContent,
-                slip_ratio: cells[7].textContent,
-                test_velocity: cells[8].textContent,
-                cleat_orientation: cells[9].textContent,
-                displacement: cells[10].textContent
-            };
-            break;
-    }
-
-    // Update status to running
-    statusCell.textContent = 'Running ⌛';
+    // Update status to processing
+    statusCell.textContent = 'Processing... ⌛';
     statusCell.style.color = '#ffc107';
     runButton.disabled = true;
 
     try {
-        // Step 1: Copy protocol files
-        const copyResponse = await fetch('/api/copy-protocol-files', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                projectName,
-                protocol,
-                runs: [runNumber]
-            })
-        });
-        if (!copyResponse.ok) throw new Error('Failed to copy protocol files');
-
-        // Step 2: Generate row-specific input file
-        const generateResponse = await fetch('/api/generate-input-files', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                projectName,
-                protocol,
-                rows: [rowData]
-            })
-        });
-        if (!generateResponse.ok) throw new Error('Failed to generate input files');
-
-        // Step 3: Start analysis for this run
-        const runResponse = await fetch('/api/run-abaqus-jobs', {
+        // Use the new dependency resolution endpoint that handles everything
+        const response = await fetch('/api/resolve-job-dependencies', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -453,209 +358,31 @@ async function runSingleAnalysis(runNumber) {
                 runNumber
             })
         });
-        if (!runResponse.ok) throw new Error('Failed to start analysis');
 
-        // Set up status polling
-        const pollStatus = setInterval(() => {
-            fetch(`/api/check-analysis-status?projectName=${projectName}&protocol=${protocol}&run=${runNumber}`)
-                .then(response => response.json())
-                .then(data => {
-                    switch(data.status) {
-                        case "Completed":
-                            statusCell.textContent = 'Completed ✓';
-                            statusCell.style.color = '#28a745';
-                            runButton.remove();
-                            clearInterval(pollStatus);
-                            break;
-                        case "Error":
-                            statusCell.textContent = 'Error ✕';
-                            statusCell.style.color = '#dc3545';
-                            runButton.disabled = false;
-                            clearInterval(pollStatus);
-                            break;
-                    }
-                });
-        }, 5000);
+        if (!response.ok) {
+            const errorResult = await response.json();
+            throw new Error(errorResult.message || 'Failed to resolve dependencies');
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            statusCell.textContent = 'Completed ✓';
+            statusCell.style.color = '#28a745';
+            runButton.remove();
+        } else {
+            throw new Error(result.message || 'Job execution failed');
+        }
 
     } catch (error) {
-        console.error('Error during single run setup:', error);
+        console.error('Error during job execution:', error);
         statusCell.textContent = 'Error ✕';
         statusCell.style.color = '#dc3545';
         runButton.disabled = false;
-        alert('Error setting up analysis: ' + error.message);
+        alert('Error during job execution: ' + error.message);
     }
 }
 
 document.getElementById('runBtn').addEventListener('click', async function() {
-    const projectName = sessionStorage.getItem('currentProject');
-    if (!projectName) {
-        window.location.href = '/index.html';
-        return;
-    }
-
-    const protocol = document.querySelector('table[style*="display: table"]').id.replace('Table', '');
-    const rows = document.querySelectorAll('tbody tr');
-    const statusIndicators = {};
-
-    // Create a map of run numbers to status indicators
-    rows.forEach(row => {
-        const runNumber = row.cells[0].textContent;
-        statusIndicators[runNumber] = row.querySelector('.status-indicator');
-    });
-    
-    // First check for already completed analyses
-    Object.entries(statusIndicators).forEach(([runNumber, indicator]) => {
-        fetch(`/api/check-analysis-status?projectName=${projectName}&protocol=${protocol}&run=${runNumber}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "Completed") {
-                    indicator.textContent = 'Completed ✓';
-                    indicator.style.color = '#28a745';
-                }
-            });
-    });
-
-    // Get array of row data for pre-analysis
-    const rowData = Array.from(rows).map(row => {
-        const cells = row.cells;
-        const protocol = document.querySelector('table[style*="display: table"]').id.replace('Table', '').toLowerCase();
-        
-        // Create row data object based on protocol
-        let data = {
-            number_of_runs: cells[0].textContent
-        };
-
-        switch(protocol) {
-            case 'mf62':
-                data = {
-                    ...data,
-                    tests: cells[1].textContent,
-                    ips: cells[2].textContent,
-                    loads: cells[3].textContent,
-                    ias: cells[4].textContent,
-                    sa_range: cells[5].textContent,
-                    sr_range: cells[6].textContent,
-                    test_velocity: cells[7].textContent
-                };
-                break;
-            case 'mf52':
-                data = {
-                    ...data,
-                    tests: cells[1].textContent,
-                    inflation_pressure: cells[2].textContent,
-                    loads: cells[3].textContent,
-                    inclination_angle: cells[4].textContent,
-                    slip_angle: cells[5].textContent,
-                    slip_ratio: cells[6].textContent,
-                    test_velocity: cells[7].textContent
-                };
-                break;
-            case 'ftire':
-                data = {
-                    ...data,
-                    tests: cells[1].textContent,
-                    loads: cells[2].textContent,
-                    inflation_pressure: cells[3].textContent,
-                    test_velocity: cells[4].textContent,
-                    longitudinal_slip: cells[5].textContent,
-                    slip_angle: cells[6].textContent,
-                    inclination_angle: cells[7].textContent,
-                    cleat_orientation: cells[8].textContent
-                };
-                break;
-            case 'cdtire':
-                data = {
-                    ...data,
-                    test_name: cells[1].textContent,
-                    inflation_pressure: cells[2].textContent,
-                    velocity: cells[3].textContent,
-                    preload: cells[4].textContent,
-                    camber: cells[5].textContent,
-                    slip_angle: cells[6].textContent,
-                    displacement: cells[7].textContent,
-                    slip_range: cells[8].textContent,
-                    cleat: cells[9].textContent,
-                    road_surface: cells[10].textContent
-                };
-                break;
-            case 'custom':
-                data = {
-                    ...data,
-                    protocol: cells[1].textContent,
-                    tests: cells[2].textContent,
-                    inflation_pressure: cells[3].textContent,
-                    loads: cells[4].textContent,
-                    inclination_angle: cells[5].textContent,
-                    slip_angle: cells[6].textContent,
-                    slip_ratio: cells[7].textContent,
-                    test_velocity: cells[8].textContent,
-                    cleat_orientation: cells[9].textContent,
-                    displacement: cells[10].textContent
-                };
-                break;
-        }
-        return data;
-    });
-
-    try {
-        // Step 1: Copy protocol files for each run
-        const copyResponse = await fetch('/api/copy-protocol-files', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                projectName,
-                protocol,
-                runs: rowData.map(row => row.number_of_runs)
-            })
-        });
-        if (!copyResponse.ok) throw new Error('Failed to copy protocol files');
-
-        // Step 2: Generate row-specific input files
-        const generateResponse = await fetch('/api/generate-input-files', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                projectName,
-                protocol,
-                rows: rowData
-            })
-        });
-        if (!generateResponse.ok) throw new Error('Failed to generate input files');
-
-        // Step 3: Run Abaqus jobs
-        const runResponse = await fetch('/api/run-abaqus-jobs', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                projectName,
-                protocol
-            })
-        });
-        if (!runResponse.ok) throw new Error('Failed to start Abaqus jobs');
-
-        // Start polling for status updates
-        const pollStatus = setInterval(() => {
-            updateStatusIndicators();
-            
-            // Check if all runs are completed or errored
-            const allDone = Array.from(document.querySelectorAll('.status-indicator')).every(ind => 
-                ind.textContent.includes('Completed') || 
-                ind.textContent.includes('Error')
-            );
-            
-            if (allDone) {
-                clearInterval(pollStatus);
-            }
-        }, 5000);
-
-    } catch (error) {
-        console.error('Error during analysis setup:', error);
-        alert('Error during analysis setup: ' + error.message);
-    }
+    alert('Please use individual "Run" buttons for each test row. Bulk execution is currently disabled in favor of dependency-aware execution.');
 });

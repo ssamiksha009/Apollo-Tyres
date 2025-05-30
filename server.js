@@ -1280,6 +1280,410 @@ app.post('/api/create-protocol-folders', (req, res) => {
     }
 });
 
+// Add new endpoint for getting row data with p, l, job, old_job
+app.get('/api/get-row-data', (req, res) => {
+    const { protocol, runNumber } = req.query;
+    
+    if (!protocol || !runNumber) {
+        return res.status(400).json({
+            success: false,
+            message: 'Protocol and run number are required'
+        });
+    }
+    
+    // Map protocol to table name
+    const tableMap = {
+        'mf62': 'mf_data',
+        'mf52': 'mf52_data',
+        'ftire': 'ftire_data',
+        'cdtire': 'cdtire_data',
+        'custom': 'custom_data'
+    };
+    
+    const tableName = tableMap[protocol.toLowerCase()];
+    if (!tableName) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid protocol'
+        });
+    }
+    
+    const query = `SELECT p, l, job, old_job FROM ${tableName} WHERE number_of_runs = $1`;
+    
+    db.query(query, [runNumber], (err, results) => {
+        if (err) {
+            console.error('Error fetching row data:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Error fetching row data'
+            });
+        }
+        
+        if (results.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Row not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: results.rows[0]
+        });
+    });
+});
+
+// Add new endpoint for checking ODB file existence
+app.get('/api/check-odb-file', (req, res) => {
+    const { projectName, protocol, folderName, jobName } = req.query;
+    
+    if (!projectName || !protocol || !folderName || !jobName) {
+        return res.status(400).json({
+            success: false,
+            message: 'All parameters are required'
+        });
+    }
+    
+    const combinedFolderName = `${projectName}_${protocol}`;
+    const odbPath = path.join(__dirname, 'abaqus', combinedFolderName, folderName, `${jobName}.odb`);
+    
+    const exists = fs.existsSync(odbPath);
+    
+    res.json({
+        success: true,
+        exists: exists,
+        path: odbPath
+    });
+});
+
+// Add new endpoint for job dependency resolution
+app.post('/api/resolve-job-dependencies', (req, res) => {
+    const { projectName, protocol, runNumber } = req.body;
+    
+    if (!projectName || !protocol || !runNumber) {
+        return res.status(400).json({
+            success: false,
+            message: 'Project name, protocol, and run number are required'
+        });
+    }
+    
+    // Map protocol to table name
+    const tableMap = {
+        'mf62': 'mf_data',
+        'mf52': 'mf52_data',
+        'ftire': 'ftire_data',
+        'cdtire': 'cdtire_data',
+        'custom': 'custom_data'
+    };
+    
+    const tableName = tableMap[protocol.toLowerCase()];
+    if (!tableName) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid protocol'
+        });
+    }
+    
+    const combinedFolderName = `${projectName}_${protocol}`;
+    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);    // Function to recursively resolve job dependencies with enhanced backtracking
+    async function resolveDependencies(jobName, visitedJobs = new Set(), callerContext = null) {
+        try {
+            // Prevent infinite loops
+            if (visitedJobs.has(jobName)) {
+                console.log(`Circular dependency detected for job: ${jobName}, skipping`);
+                return { success: true, message: `Circular dependency avoided for ${jobName}` };
+            }
+            visitedJobs.add(jobName);
+            
+            console.log(`\n=== Resolving dependencies for job: ${jobName} ===`);
+            
+            // Enhanced job search: try current folder first, then search globally
+            let jobData = null;
+            let actualJobName = jobName;
+            
+            // Step 1: Try to find job in caller's context first (if available)
+            if (callerContext) {
+                console.log(`Step 1: Searching in caller's folder ${callerContext.p}_${callerContext.l}...`);
+                jobData = await findJobInFolder(jobName, callerContext.p, callerContext.l);
+                if (jobData) {
+                    actualJobName = jobData.job;
+                    console.log(`✓ Found "${actualJobName}" in same folder ${callerContext.p}_${callerContext.l}`);
+                }
+            }
+            
+            // Step 2: If not found in caller's context, search globally across all folders
+            if (!jobData) {
+                console.log(`Step 2: Job not found in caller's folder, searching globally...`);
+                jobData = await findJobGlobally(jobName);
+                if (jobData) {
+                    actualJobName = jobData.job;
+                    console.log(`✓ Found "${actualJobName}" globally in folder ${jobData.p}_${jobData.l}`);
+                } else {
+                    throw new Error(`Job "${jobName}" not found in any folder of the protocol`);
+                }
+            }
+            
+            const folderName = `${jobData.p}_${jobData.l}`;
+            const folderPath = path.join(projectPath, folderName);
+            
+            // Check if current job's ODB already exists
+            const odbJobName = actualJobName.endsWith('.inp') ? actualJobName.replace('.inp', '') : actualJobName;
+            const odbPath = path.join(folderPath, `${odbJobName}.odb`);
+            if (fs.existsSync(odbPath)) {
+                console.log(`✓ ODB already exists for job: ${odbJobName} in ${folderName}`);
+                return { success: true, message: `Job ${odbJobName} already completed` };
+            }
+            
+            // Step 3: Recursively resolve dependencies (old_job)
+            if (jobData.old_job && jobData.old_job !== '-') {
+                console.log(`Step 3: Resolving dependency "${jobData.old_job}" for job "${actualJobName}"`);
+                
+                // Recursively resolve the dependency first (backtracking approach)
+                const dependencyResult = await resolveDependencies(jobData.old_job, visitedJobs, { p: jobData.p, l: jobData.l });
+                if (!dependencyResult.success) {
+                    throw new Error(`Failed to resolve dependency ${jobData.old_job}: ${dependencyResult.message}`);
+                }
+            } else {
+                console.log(`Step 3: No dependencies for job "${actualJobName}" (old_job: ${jobData.old_job})`);
+            }
+            
+            // Step 4: Execute current job after all dependencies are resolved
+            console.log(`Step 4: Executing job "${odbJobName}" in folder ${folderName}...`);
+            const executeResult = await executeAbaqusJob(folderPath, odbJobName, jobData.old_job);
+            if (!executeResult.success) {
+                throw new Error(`Failed to execute job ${odbJobName}: ${executeResult.message}`);
+            }
+            
+            console.log(`✓ Successfully executed job "${odbJobName}"`);
+            return { success: true, message: `Job ${odbJobName} executed successfully` };
+            
+        } catch (error) {
+            console.error(`Error resolving dependencies for ${jobName}:`, error);
+            throw error;
+        }
+    }
+    
+    // Helper function to find job in specific folder
+    async function findJobInFolder(jobName, p, l) {
+        const searchNames = [
+            jobName,
+            jobName.endsWith('.inp') ? jobName.replace('.inp', '') : jobName + '.inp'
+        ];
+        
+        for (const searchName of searchNames) {
+            const query = `SELECT p, l, job, old_job FROM ${tableName} WHERE job = $1 AND p = $2 AND l = $3`;
+            const result = await db.query(query, [searchName, p, l]);
+            if (result.rows.length > 0) {
+                return result.rows[0];
+            }
+        }
+        return null;
+    }
+    
+    // Helper function to find job globally across all folders
+    async function findJobGlobally(jobName) {
+        const searchNames = [
+            jobName,
+            jobName.endsWith('.inp') ? jobName.replace('.inp', '') : jobName + '.inp'
+        ];
+        
+        for (const searchName of searchNames) {
+            const query = `SELECT p, l, job, old_job FROM ${tableName} WHERE job = $1`;
+            const result = await db.query(query, [searchName]);
+            if (result.rows.length > 0) {
+                // If multiple matches, prefer one with existing ODB file
+                for (const job of result.rows) {
+                    const odbJobName = job.job.endsWith('.inp') ? job.job.replace('.inp', '') : job.job;
+                    const odbPath = path.join(projectPath, `${job.p}_${job.l}`, `${odbJobName}.odb`);
+                    if (fs.existsSync(odbPath)) {
+                        console.log(`Preferring job with existing ODB: ${job.job} in ${job.p}_${job.l}`);
+                        return job;
+                    }
+                }
+                // If no ODB found, return first match
+                return result.rows[0];
+            }
+        }
+        return null;
+    }    // Function to execute Abaqus job with enhanced dependency handling
+    function executeAbaqusJob(folderPath, jobName, oldJobName) {
+        return new Promise((resolve) => {
+            try {
+                // Ensure job names are clean (without .inp for command execution)
+                const cleanJobName = jobName.endsWith('.inp') ? jobName.replace('.inp', '') : jobName;
+                
+                let command;
+                // Handle cases where old_job exists vs doesn't exist
+                if (oldJobName && oldJobName !== '-') {
+                    const cleanOldJobName = oldJobName.endsWith('.inp') ? oldJobName.replace('.inp', '') : oldJobName;
+                    command = `abaqus job=${cleanJobName} oldjob=${cleanOldJobName} input=${cleanJobName}.inp`;
+                    console.log(`Executing with dependency: ${command}`);
+                } else {
+                    command = `abaqus job=${cleanJobName} input=${cleanJobName}.inp`;
+                    console.log(`Executing without dependency: ${command}`);
+                }
+                
+                console.log(`Working directory: ${folderPath}`);
+                
+                const abaqusProcess = spawn('cmd', ['/c', command], {
+                    cwd: folderPath,
+                    shell: true
+                });
+                
+                let output = '';
+                let errorOutput = '';
+                
+                abaqusProcess.stdout.on('data', (data) => {
+                    output += data.toString();
+                });
+                
+                abaqusProcess.stderr.on('data', (data) => {
+                    errorOutput += data.toString();
+                });
+                
+                abaqusProcess.on('close', (code) => {
+                    console.log(`Process finished with exit code: ${code}`);
+                    if (code === 0) {
+                        resolve({ success: true, output: output });
+                    } else {
+                        resolve({ 
+                            success: false, 
+                            message: `Process exited with code ${code}`,
+                            error: errorOutput,
+                            output: output
+                        });
+                    }
+                });
+                
+                abaqusProcess.on('error', (error) => {
+                    console.error(`Process spawn error: ${error.message}`);
+                    resolve({ 
+                        success: false, 
+                        message: `Failed to start process: ${error.message}` 
+                    });
+                });
+                
+            } catch (error) {
+                console.error(`Function execution error: ${error.message}`);
+                resolve({ 
+                    success: false, 
+                    message: `Error executing job: ${error.message}` 
+                });
+            }
+        });
+    }
+    
+    // Start the dependency resolution process
+    (async () => {
+        try {
+            // Get the initial job data
+            const query = `SELECT p, l, job, old_job FROM ${tableName} WHERE number_of_runs = $1`;
+            const result = await db.query(query, [runNumber]);
+            
+            if (result.rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Row not found'
+                });
+            }
+            
+            const rowData = result.rows[0];
+            
+            if (!fs.existsSync(projectPath)) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Project folder not found'
+                });
+            }
+              console.log(`Starting dependency resolution for job: ${rowData.job} in context P${rowData.p}_L${rowData.l}`);
+            // Pass the initial job's context to help with dependency resolution
+            const initialContext = { p: rowData.p, l: rowData.l };
+            await resolveDependencies(rowData.job, new Set(), initialContext);
+            
+            res.json({
+                success: true,
+                message: `Job ${rowData.job} and all dependencies executed successfully`
+            });
+            
+        } catch (error) {
+            console.error('Error in dependency resolution:', error);
+            res.status(500).json({
+                success: false,
+                message: `Error resolving dependencies: ${error.message}`
+            });
+        }
+    })();
+});
+
+// Add endpoint for checking job completion status more comprehensively
+app.get('/api/check-job-status', (req, res) => {
+    const { projectName, protocol, folderName, jobName } = req.query;
+    
+    if (!projectName || !protocol || !folderName || !jobName) {
+        return res.status(400).json({
+            success: false,
+            message: 'All parameters are required'
+        });
+    }
+    
+    const combinedFolderName = `${projectName}_${protocol}`;
+    const jobPath = path.join(__dirname, 'abaqus', combinedFolderName, folderName);
+    
+    try {
+        // Check for various file types to determine job status
+        const odbFile = path.join(jobPath, `${jobName}.odb`);
+        const staFile = path.join(jobPath, `${jobName}.sta`);
+        const msgFile = path.join(jobPath, `${jobName}.msg`);
+        
+        let status = 'not_started';
+        let message = '';
+        
+        if (fs.existsSync(odbFile)) {
+            status = 'completed';
+            message = 'Job completed successfully - ODB file exists';
+        } else if (fs.existsSync(staFile)) {
+            // Check status file content
+            try {
+                const staContent = fs.readFileSync(staFile, 'utf8');
+                if (staContent.includes('COMPLETED')) {
+                    status = 'completed';
+                    message = 'Job completed according to status file';
+                } else if (staContent.includes('ABORTED') || staContent.includes('ERROR')) {
+                    status = 'error';
+                    message = 'Job aborted or encountered error';
+                } else {
+                    status = 'running';
+                    message = 'Job is currently running';
+                }
+            } catch (readErr) {
+                status = 'running';
+                message = 'Status file exists but could not be read';
+            }
+        } else if (fs.existsSync(msgFile)) {
+            status = 'running';
+            message = 'Job started - message file exists';
+        }
+        
+        res.json({
+            success: true,
+            status: status,
+            message: message,
+            files: {
+                odb: fs.existsSync(odbFile),
+                sta: fs.existsSync(staFile),
+                msg: fs.existsSync(msgFile)
+            }
+        });
+        
+    } catch (err) {
+        console.error('Error checking job status:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Error checking job status: ' + err.message
+        });
+    }
+});
+
 // Serve the main application
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
