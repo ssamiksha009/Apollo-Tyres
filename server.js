@@ -1313,7 +1313,6 @@ app.post('/api/create-protocol-folders', (req, res) => {
         try {
             if (fs.existsSync(centralParametersPath)) {
                 fs.unlinkSync(centralParametersPath);
-                console.log('Central parameters.inc file cleaned up successfully');
             }
         } catch (cleanupErr) {
             console.error('Error cleaning up central parameters.inc file:', cleanupErr);
