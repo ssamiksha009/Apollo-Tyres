@@ -20,11 +20,66 @@ function updateTestSummary() {
 window.addEventListener('load', updateTestSummary);
 
 document.getElementById('submitBtn').addEventListener('click', function() {
+    const errorMessage = document.getElementById('errorMessage');
+    errorMessage.textContent = '';
+    
+    // Check if all inputs are filled and valid
+    const inputs = document.querySelectorAll('input[required]');
+    let allValid = true;
+    
+    inputs.forEach(input => {
+        if (!input.value || !input.checkValidity()) {
+            allValid = false;
+            input.classList.add('invalid');
+        } else {
+            input.classList.remove('invalid');
+        }
+    });
+
+    if (!allValid) {
+        errorMessage.textContent = '* All fields are mandatory and must be positive numbers';
+        errorMessage.style.display = 'block';
+        return;
+    }
+    
+    // Handle mesh file upload if provided
+    const meshFile = document.getElementById('meshFile').files[0];
+    if (meshFile) {
+        const formData = new FormData();
+        formData.append('meshFile', meshFile);
+        
+        // Upload the mesh file
+        fetch('/api/upload-mesh-file', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to upload mesh file');
+            }
+            // Continue with Excel processing after successful mesh file upload
+            processMF52Excel();
+        })
+        .catch(error => {
+            errorMessage.style.color = '#d9534f';
+            errorMessage.textContent = error.message || 'Error uploading mesh file. Please try again.';
+        });
+    } else {
+        // Proceed without mesh file upload
+        processMF52Excel();
+    }
+});
+
+// Extract Excel processing to a separate function
+function processMF52Excel() {
+    const errorMessage = document.getElementById('errorMessage');
+    
     const parameterData = {
         load1_kg: document.getElementById('l1').value,
         load2_kg: document.getElementById('l2').value,
         load3_kg: document.getElementById('l3').value,
-        pressure2: document.getElementById('p2').value,  // Changed from pressure to pressure2
+        pressure2: document.getElementById('p2').value,
         speed_kmph: document.getElementById('vel').value,
         IA: document.getElementById('ia').value,
         SA: document.getElementById('sa').value,
@@ -46,8 +101,7 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         if (!data.success) {
             throw new Error(data.message || 'Error generating parameter file');
         }
-        // Request MF5pt2.xlsx specifically
-        return fetch('/api/read-protocol-excel?file=MF5pt2.xlsx');  // Changed from MF6pt2.xlsx
+        return fetch('/api/read-protocol-excel');
     })
     .then(response => response.arrayBuffer())
     .then(data => {
@@ -77,31 +131,25 @@ document.getElementById('submitBtn').addEventListener('click', function() {
             const newSheet = jsonData.map((row, rowIndex) => {
                 if (!Array.isArray(row)) return row;
                 
-                // Store original P and L values for this row
                 const originalPValues = [];
                 const originalLValues = [];
                 
                 const modifiedRow = row.map(cell => {
                     if (cell === null || cell === undefined) return cell;
-                    
                     const cellStr = String(cell).trim();
                     
-                    // Store original P values before replacement
                     if (cellStr.match(/^P[1-3]$/)) {
                         originalPValues.push(cellStr);
                     }
                     
-                    // Store original L values before replacement
                     if (cellStr.match(/^L[1-5]$/)) {
                         originalLValues.push(cellStr);
                     }
 
-                    // Case-insensitive velocity check
                     if (cellStr.toLowerCase() === 'vel') {
                         return document.getElementById('vel').value.trim();
                     }
 
-                    // Handle special values
                     if (cellStr === 'IA') return iaValue;
                     if (cellStr === '-IA') return (-Math.abs(parseFloat(iaValue))).toString();
                     if (cellStr === 'SR') return srValue;
@@ -109,7 +157,6 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     if (cellStr === 'SA') return saValue;
                     if (cellStr === '-SA') return (-Math.abs(parseFloat(saValue))).toString();
 
-                    // Handle direct replacements
                     if (replacements.hasOwnProperty(cellStr) && replacements[cellStr] !== null) {
                         return replacements[cellStr];
                     }
@@ -117,10 +164,8 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     return cell;
                 });
                 
-                // Add original P and L values as new columns at the end
                 const extendedRow = [...modifiedRow];
                 
-                // Add header for first row
                 if (rowIndex === 0) {
                     extendedRow.push('Original P Values', 'Original L Values');
                 } else {
@@ -137,12 +182,9 @@ document.getElementById('submitBtn').addEventListener('click', function() {
             XLSX.utils.book_append_sheet(outputWorkbook, modifiedWorksheet, sheetName);
         });
 
-        // Save modified workbook
         const excelBuffer = XLSX.write(outputWorkbook, { bookType: 'xlsx', type: 'array' });
         const formData = new FormData();
-        formData.append('excelFile', new Blob([excelBuffer], { 
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-        }), 'output.xlsx');
+        formData.append('excelFile', new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'output.xlsx');
 
         return fetch('/api/save-excel', {
             method: 'POST',
@@ -152,10 +194,9 @@ document.getElementById('submitBtn').addEventListener('click', function() {
     .then(response => response.json())
     .then(data => {
         if (!data.success) {
-            throw new Error(data.message || 'Error saving file');
+            throw new Error(data.message || 'Error storing data');
         }
 
-        // Read the output file to extract data
         return fetch('/api/read-output-excel')
             .then(response => response.arrayBuffer())
             .then(data => {
@@ -166,7 +207,6 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     const worksheet = workbook.Sheets[sheetName];
                     const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
                     
-                    // Find the header row
                     let headerRowIndex = jsonData.findIndex(row => 
                         row && row.includes('Number Of Tests'));
                     
@@ -176,21 +216,19 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     const columns = {
                         runs: headerRow.indexOf('Number Of Tests'),
                         tests: headerRow.indexOf('Tests'),
-                        pressure: headerRow.indexOf('Inflation Pressure [PSI]'),
+                        inflation_pressure: headerRow.indexOf('Inflation Pressure [PSI]'),
                         loads: headerRow.indexOf('Loads[Kg]'),
-                        ia: headerRow.indexOf('Inclination Angle[°]'),
-                        sa: headerRow.indexOf('Slip Angle[°]'),
-                        sr: headerRow.indexOf('Slip Ratio [%]'),
-                        velocity: headerRow.indexOf('Test Velocity [Kmph]'),
+                        inclination_angle: headerRow.indexOf('Inclination Angle[°]'),
+                        slip_angle: headerRow.indexOf('Slip Angle[°]'),
+                        slip_ratio: headerRow.indexOf('Slip Ratio [%]'),
+                        test_velocity: headerRow.indexOf('Test Velocity [Kmph]'),
                         job: headerRow.indexOf('Job'),
                         old_job: headerRow.indexOf('Old Job')
                     };
 
-                    // P and L columns are positioned right after Old Job column
                     const pColumnIndex = columns.old_job >= 0 ? columns.old_job + 1 : -1;
                     const lColumnIndex = columns.old_job >= 0 ? columns.old_job + 2 : -1;
 
-                    // Extract data rows
                     for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
                         const row = jsonData[i];
                         if (!row || !row[columns.runs]) continue;
@@ -198,12 +236,12 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                         extractedData.push({
                             number_of_runs: parseInt(row[columns.runs]),
                             tests: row[columns.tests]?.toString() || '',
-                            inflation_pressure: row[columns.pressure]?.toString() || '',
+                            inflation_pressure: row[columns.inflation_pressure]?.toString() || '',
                             loads: row[columns.loads]?.toString() || '',
-                            inclination_angle: row[columns.ia]?.toString() || '',
-                            slip_angle: row[columns.sa]?.toString() || '',
-                            slip_ratio: row[columns.sr]?.toString() || '',
-                            test_velocity: row[columns.velocity]?.toString() || '',
+                            inclination_angle: row[columns.inclination_angle]?.toString() || '',
+                            slip_angle: row[columns.slip_angle]?.toString() || '',
+                            slip_ratio: row[columns.slip_ratio]?.toString() || '',
+                            test_velocity: row[columns.test_velocity]?.toString() || '',
                             job: columns.job >= 0 ? (row[columns.job]?.toString() || '') : '',
                             old_job: columns.old_job >= 0 ? (row[columns.old_job]?.toString() || '') : '',
                             p: pColumnIndex >= 0 ? (row[pColumnIndex]?.toString() || '') : '',
@@ -216,7 +254,6 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                     throw new Error('No valid data found in Excel file');
                 }
 
-                // Store the extracted data
                 return fetch('/api/store-mf52-data', {
                     method: 'POST',
                     headers: {
@@ -231,13 +268,29 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         if (!data.success) {
             throw new Error(data.message || 'Error storing data');
         }
-        // Update test summary and redirect
+        
+        const projectName = sessionStorage.getItem('currentProject') || 'DefaultProject';
+        return fetch('/api/create-protocol-folders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                projectName: projectName,
+                protocol: 'MF52'
+            })
+        });
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.message || 'Error creating protocol folders');
+        }
         updateTestSummary();
         window.location.href = '/select.html';
     })
     .catch(error => {
-        const errorMessage = document.getElementById('errorMessage');
         errorMessage.style.color = '#d9534f';
         errorMessage.textContent = error.message || 'Error processing file. Please try again.';
     });
-});
+}

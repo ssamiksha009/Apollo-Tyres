@@ -2,5 +2,7 @@ node_modules
 package.json
 package-lock.json
 output.xlsx
-parameters.inc
+templates/inc/parameters.inc
 abaqus/*/
+projects/*/
+templates/inc/MF6pt2/*/

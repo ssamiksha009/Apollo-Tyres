@@ -27,11 +27,66 @@ function updateTestSummary() {
 window.addEventListener('load', updateTestSummary);
 
 document.getElementById('submitBtn').addEventListener('click', function() {
+    const errorMessage = document.getElementById('errorMessage');
+    errorMessage.textContent = '';
+    
+    // Check if all inputs are filled and valid
+    const inputs = document.querySelectorAll('input[required]');
+    let allValid = true;
+    
+    inputs.forEach(input => {
+        if (!input.value || !input.checkValidity()) {
+            allValid = false;
+            input.classList.add('invalid');
+        } else {
+            input.classList.remove('invalid');
+        }
+    });
+
+    if (!allValid) {
+        errorMessage.textContent = '* All fields are mandatory and must be positive numbers';
+        errorMessage.style.display = 'block';
+        return;
+    }
+    
+    // Handle mesh file upload if provided
+    const meshFile = document.getElementById('meshFile').files[0];
+    if (meshFile) {
+        const formData = new FormData();
+        formData.append('meshFile', meshFile);
+        
+        // Upload the mesh file
+        fetch('/api/upload-mesh-file', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to upload mesh file');
+            }
+            // Continue with Excel processing after successful mesh file upload
+            processFTireExcel();
+        })
+        .catch(error => {
+            errorMessage.style.color = '#d9534f';
+            errorMessage.textContent = error.message || 'Error uploading mesh file. Please try again.';
+        });
+    } else {
+        // Proceed without mesh file upload
+        processFTireExcel();
+    }
+});
+
+// Extract Excel processing to a separate function
+function processFTireExcel() {
+    const errorMessage = document.getElementById('errorMessage');
+    
     const parameterData = {
         load1_kg: document.getElementById('l1').value,
         load2_kg: document.getElementById('l2').value,
         load3_kg: document.getElementById('l3').value,
-        pressure1: document.getElementById('p1').value,  // Changed to pressure1
+        pressure1: document.getElementById('p1').value,
         speed_kmph: document.getElementById('vel').value,
         IA: document.getElementById('ia').value,
         SA: document.getElementById('sa').value,
@@ -260,6 +315,24 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         if (!data.success) {
             throw new Error(data.message || 'Error storing data');
         }
+        
+        const projectName = sessionStorage.getItem('currentProject') || 'DefaultProject';
+        return fetch('/api/create-protocol-folders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                projectName: projectName,
+                protocol: 'FTire'
+            })
+        });
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.message || 'Error creating protocol folders');
+        }
         updateTestSummary();
         window.location.href = '/select.html';
     })
@@ -268,4 +341,4 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         errorMessage.style.color = '#d9534f';
         errorMessage.textContent = error.message || 'Error processing file. Please try again.';
     });
-});
+}

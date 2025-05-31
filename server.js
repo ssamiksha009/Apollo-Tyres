@@ -229,13 +229,10 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                     return;
                 }
                 console.log('CDTire data table created successfully');
-            });
-
-            // Create the custom_data table if it doesn't exist
+            });            // Create the custom_data table if it doesn't exist
             const createCustomDataTable = `
                 CREATE TABLE IF NOT EXISTS custom_data (
                     number_of_runs INT,
-                    protocol VARCHAR(255),
                     tests VARCHAR(255),
                     inflation_pressure VARCHAR(255),
                     loads VARCHAR(255),
@@ -420,40 +417,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Configure multer for custom protocol file upload
-const customProtocolStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const dir = path.join(__dirname, 'protocol');
-        // Create directory if it doesn't exist
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir);
-        }
-        cb(null, dir);
-    },
-    filename: function (req, file, cb) {
-        // Save as Custom.xlsx
-        cb(null, 'Custom.xlsx');
-    }
-});
-
-const uploadCustomProtocol = multer({ storage: customProtocolStorage });
-
-// Add new endpoint for uploading custom protocol file
-app.post('/api/upload-custom-protocol', uploadCustomProtocol.single('customProtocolFile'), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({
-            success: false,
-            message: 'No file received'
-        });
-    }
-
-    res.json({
-        success: true,
-        message: 'Custom protocol file uploaded successfully',
-        filename: 'Custom.xlsx'
-    });
-});
-
 // Add new endpoint for saving Excel files
 app.post('/api/save-excel', upload.single('excelFile'), (req, res) => {
     if (!req.file) {
@@ -471,12 +434,12 @@ app.post('/api/save-excel', upload.single('excelFile'), (req, res) => {
 });
 
 // Add these utility functions after other middleware definitions
-function clearAbaqusFolder() {
-    const abaqusPath = path.join(__dirname, 'abaqus');
-    if (fs.existsSync(abaqusPath)) {
-        rimraf.sync(abaqusPath);
+function clearProjectsFolder() {
+    const projectsPath = path.join(__dirname, 'projects');
+    if (fs.existsSync(projectsPath)) {
+        rimraf.sync(projectsPath);
     }
-    fs.mkdirSync(abaqusPath, { recursive: true });
+    fs.mkdirSync(projectsPath, { recursive: true });
 }
 
 // Replace the existing store-excel-data endpoint with this modified version
@@ -651,7 +614,7 @@ app.get('/api/get-test-summary', (req, res) => {
     });
 });
 
-// Add new endpoint for MF 5.2 data
+// Add new endpoint to get MF 5.2 data
 app.post('/api/store-mf52-data', (req, res) => {
     const { data } = req.body;
     
@@ -959,21 +922,18 @@ app.post('/api/store-custom-data', (req, res) => {
                 success: false,
                 message: 'Error clearing existing data'
             });
-        }
-
-        // PostgreSQL doesn't support the VALUES ? syntax, use individual inserts with Promise.all
+        }        // PostgreSQL doesn't support the VALUES ? syntax, use individual inserts with Promise.all
         const insertPromises = data.map(row => {
             const insertQuery = `
                 INSERT INTO custom_data 
-                (number_of_runs, protocol, tests, inflation_pressure, loads,
+                (number_of_runs, tests, inflation_pressure, loads,
                  inclination_angle, slip_angle, slip_ratio, test_velocity, 
                  cleat_orientation, displacement, job, old_job, p, l)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             `;
             
             return db.query(insertQuery, [
                 row.number_of_runs || 0,
-                row.protocol || '',
                 row.tests || '',
                 row.inflation_pressure || '',
                 row.loads || '',
@@ -1044,7 +1004,7 @@ app.get('/api/get-custom-summary', (req, res) => {
 app.post('/api/clear-folders', (req, res) => {
     const { projectName, protocol } = req.body;
     const combinedFolderName = `${projectName}_${protocol}`;
-    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
+    const projectPath = path.join(__dirname, 'projects', combinedFolderName);
     
     try {
         if (fs.existsSync(projectPath)) {
@@ -1063,23 +1023,24 @@ app.post('/api/generate-parameters', (req, res) => {
     try {
         const referer = req.headers.referer || '';
         let templatePath;
-
-        // Select template based on protocol page
+          // Select template based on protocol page
         if (referer.includes('mf.html')) {
-            templatePath = path.join(__dirname, 'abaqus', 'mf62.inc');
+            templatePath = path.join(__dirname, 'templates', 'inc', 'mf62.inc');
         } else if (referer.includes('mf52.html')) {
-            templatePath = path.join(__dirname, 'abaqus', 'mf52.inc');
+            templatePath = path.join(__dirname, 'templates', 'inc', 'mf52.inc');
         } else if (referer.includes('ftire.html')) {
-            templatePath = path.join(__dirname, 'abaqus', 'ftire.inc');
+            templatePath = path.join(__dirname, 'templates', 'inc', 'ftire.inc');
         } else if (referer.includes('cdtire.html')) {
-            templatePath = path.join(__dirname, 'abaqus', 'cdtire.inc');
+            templatePath = path.join(__dirname, 'templates', 'inc', 'cdtire.inc');
         } else if (referer.includes('custom.html')) {
-            templatePath = path.join(__dirname, 'abaqus', 'custom.inc');
+            templatePath = path.join(__dirname, 'templates', 'inc', 'custom.inc');
         } else {
             throw new Error('Unknown protocol');
         }
-
-        const outputPath = path.join(__dirname, 'abaqus', 'parameters.inc');
+        
+        // Generate parameters.inc in the central template location
+        // This file will be copied to individual Px_Ly folders during project creation
+        const outputPath = path.join(__dirname, 'templates', 'inc', 'parameters.inc');
         
         // Read template file
         let content = fs.readFileSync(templatePath, 'utf8');
@@ -1130,7 +1091,7 @@ app.post('/api/generate-parameters', (req, res) => {
 app.post('/api/run-abaqus-jobs', (req, res) => {
     const { projectName, protocol, runNumber } = req.body;
     const combinedFolderName = `${projectName}_${protocol}`;
-    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
+    const projectPath = path.join(__dirname, 'projects', combinedFolderName);
     const pythonScript = path.join(__dirname, 'scripts', 'run_abaqus.py');
 
     try {
@@ -1173,19 +1134,70 @@ app.post('/api/run-abaqus-jobs', (req, res) => {
     }
 });
 
+// Configure multer for mesh file upload (temporary storage)
+const meshFileStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const dir = path.join(__dirname, 'temp');
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir);
+        }
+        cb(null, dir);
+    },
+    filename: function (req, file, cb) {
+        // Keep original filename
+        cb(null, file.originalname);
+    }
+});
+
+const uploadMeshFile = multer({ storage: meshFileStorage });
+
+// Add new endpoint for uploading mesh files temporarily
+app.post('/api/upload-mesh-file', uploadMeshFile.single('meshFile'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({
+            success: false,
+            message: 'No file received'
+        });
+    }
+
+    res.json({
+        success: true,
+        message: 'Mesh file uploaded successfully',
+        filename: req.file.originalname
+    });
+});
+
 // Add new endpoint for protocol-based folder creation on submit
 app.post('/api/create-protocol-folders', (req, res) => {
-    const { projectName, protocol } = req.body;
-    
-    if (!projectName || !protocol) {
+    const { projectName, protocol } = req.body;    if (!projectName || !protocol) {
         return res.status(400).json({
             success: false,
             message: 'Project name and protocol are required'
         });
     }
+      // Function to generate unique folder name
+    function generateUniqueFolderName(baseName, basePath) {
+        let counter = 1;
+        let uniqueName = baseName;
+        let fullPath = path.join(basePath, uniqueName);
+        
+        // If folder doesn't exist, use the original name
+        if (!fs.existsSync(fullPath)) {
+            return uniqueName;
+        }
+        
+        // If folder exists, remove it completely and create fresh
+        if (fs.existsSync(fullPath)) {
+            rimraf.sync(fullPath);
+        }
+        
+        return uniqueName;
+    }
     
-    const combinedFolderName = `${projectName}_${protocol}`;
-    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);
+    const baseCombinedName = `${projectName}_${protocol}`;
+    const basePath = path.join(__dirname, 'projects');
+    const combinedFolderName = generateUniqueFolderName(baseCombinedName, basePath);
+    const projectPath = path.join(basePath, combinedFolderName);
     
     try {
         // Create base project folder
@@ -1207,7 +1219,7 @@ app.post('/api/create-protocol-folders', (req, res) => {
             throw new Error(`Unknown protocol: ${protocol}`);
         }
         
-        const templatePath = path.join(__dirname, 'abaqus', 'templates', templateProtocolName);
+        const templatePath = path.join(__dirname, 'templates', templateProtocolName);
         
         if (!fs.existsSync(templatePath)) {
             throw new Error(`Template folder not found: ${templatePath}`);
@@ -1253,15 +1265,58 @@ app.post('/api/create-protocol-folders', (req, res) => {
             copyFolderSync(sourceSubfolder, destSubfolder);
         });
         
-        // Copy parameters.inc to each subfolder
-        const parametersPath = path.join(__dirname, 'abaqus', 'parameters.inc');
-        if (fs.existsSync(parametersPath)) {
+        // Copy parameters.inc from central template location to each subfolder
+        const centralParametersPath = path.join(__dirname, 'templates', 'inc', 'parameters.inc');
+        if (fs.existsSync(centralParametersPath)) {
             subfolders.forEach(subfolder => {
                 const destParametersPath = path.join(projectPath, subfolder, 'parameters.inc');
-                fs.copyFileSync(parametersPath, destParametersPath);
+                fs.copyFileSync(centralParametersPath, destParametersPath);
             });
-        } else {
-            console.warn('parameters.inc not found, skipping copy to subfolders');
+        }
+        
+        // Copy mesh file to all P_L folders if it exists
+        const tempDir = path.join(__dirname, 'temp');
+        if (fs.existsSync(tempDir)) {
+            const meshFiles = fs.readdirSync(tempDir).filter(file => file.endsWith('.inp'));
+            if (meshFiles.length > 0) {
+                const meshFile = meshFiles[0]; // Use the first mesh file found
+                const sourceMeshPath = path.join(tempDir, meshFile);
+                
+                subfolders.forEach(subfolder => {
+                    const destMeshPath = path.join(projectPath, subfolder, meshFile);
+                    try {
+                        fs.copyFileSync(sourceMeshPath, destMeshPath);
+                    } catch (copyErr) {
+                        console.error(`Error copying mesh file to ${subfolder}:`, copyErr);
+                    }
+                });
+                  // Clean up temporary mesh file
+                try {
+                    fs.unlinkSync(sourceMeshPath);
+                } catch (cleanupErr) {
+                    console.error('Error cleaning up temporary mesh file:', cleanupErr);
+                }
+            }
+            
+            // Clean up the entire temp directory after mesh file copying is done
+            try {
+                if (fs.existsSync(tempDir)) {
+                    fs.rmSync(tempDir, { recursive: true, force: true });
+                    console.log('Temp directory cleaned up successfully');
+                }
+            } catch (cleanupErr) {
+                console.error('Error cleaning up temp directory:', cleanupErr);
+            }
+        }
+        
+        // Clean up parameters.inc from templates/inc/ after copying to all P_L folders
+        try {
+            if (fs.existsSync(centralParametersPath)) {
+                fs.unlinkSync(centralParametersPath);
+                console.log('Central parameters.inc file cleaned up successfully');
+            }
+        } catch (cleanupErr) {
+            console.error('Error cleaning up central parameters.inc file:', cleanupErr);
         }
         
         res.json({ 
@@ -1343,9 +1398,8 @@ app.get('/api/check-odb-file', (req, res) => {
             message: 'All parameters are required'
         });
     }
-    
-    const combinedFolderName = `${projectName}_${protocol}`;
-    const odbPath = path.join(__dirname, 'abaqus', combinedFolderName, folderName, `${jobName}.odb`);
+      const combinedFolderName = `${projectName}_${protocol}`;
+    const odbPath = path.join(__dirname, 'projects', combinedFolderName, folderName, `${jobName}.odb`);
     
     const exists = fs.existsSync(odbPath);
     
@@ -1383,9 +1437,8 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
             message: 'Invalid protocol'
         });
     }
-    
-    const combinedFolderName = `${projectName}_${protocol}`;
-    const projectPath = path.join(__dirname, 'abaqus', combinedFolderName);    // Function to recursively resolve job dependencies with enhanced backtracking
+      const combinedFolderName = `${projectName}_${protocol}`;
+    const projectPath = path.join(__dirname, 'projects', combinedFolderName);    // Function to recursively resolve job dependencies with enhanced backtracking
     async function resolveDependencies(jobName, visitedJobs = new Set(), callerContext = null) {
         try {
             // Prevent infinite loops
@@ -1396,31 +1449,24 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
             visitedJobs.add(jobName);
             
             console.log(`\n=== Resolving dependencies for job: ${jobName} ===`);
-            
-            // Enhanced job search: try current folder first, then search globally
+              
+            // Strict folder containment: Only look for jobs in the current P_L folder
             let jobData = null;
             let actualJobName = jobName;
             
-            // Step 1: Try to find job in caller's context first (if available)
+            // Look for the job in caller's context (P_L folder) - and ONLY in this folder
             if (callerContext) {
-                console.log(`Step 1: Searching in caller's folder ${callerContext.p}_${callerContext.l}...`);
+                console.log(`Searching for job "${jobName}" in folder ${callerContext.p}_${callerContext.l}...`);
                 jobData = await findJobInFolder(jobName, callerContext.p, callerContext.l);
                 if (jobData) {
                     actualJobName = jobData.job;
-                    console.log(`✓ Found "${actualJobName}" in same folder ${callerContext.p}_${callerContext.l}`);
+                    console.log(`✓ Found "${actualJobName}" in folder ${callerContext.p}_${callerContext.l}`);
                 }
             }
             
-            // Step 2: If not found in caller's context, search globally across all folders
+            // If not found in folder, throw error - we never search globally
             if (!jobData) {
-                console.log(`Step 2: Job not found in caller's folder, searching globally...`);
-                jobData = await findJobGlobally(jobName);
-                if (jobData) {
-                    actualJobName = jobData.job;
-                    console.log(`✓ Found "${actualJobName}" globally in folder ${jobData.p}_${jobData.l}`);
-                } else {
-                    throw new Error(`Job "${jobName}" not found in any folder of the protocol`);
-                }
+                throw new Error(`Job "${jobName}" not found in folder ${callerContext ? callerContext.p + '_' + callerContext.l : 'unknown'}. Dependencies must exist within the same P_L folder.`);
             }
             
             const folderName = `${jobData.p}_${jobData.l}`;
@@ -1462,8 +1508,7 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
             throw error;
         }
     }
-    
-    // Helper function to find job in specific folder
+      // Helper function to find job in specific folder
     async function findJobInFolder(jobName, p, l) {
         const searchNames = [
             jobName,
@@ -1478,34 +1523,7 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
             }
         }
         return null;
-    }
-    
-    // Helper function to find job globally across all folders
-    async function findJobGlobally(jobName) {
-        const searchNames = [
-            jobName,
-            jobName.endsWith('.inp') ? jobName.replace('.inp', '') : jobName + '.inp'
-        ];
-        
-        for (const searchName of searchNames) {
-            const query = `SELECT p, l, job, old_job FROM ${tableName} WHERE job = $1`;
-            const result = await db.query(query, [searchName]);
-            if (result.rows.length > 0) {
-                // If multiple matches, prefer one with existing ODB file
-                for (const job of result.rows) {
-                    const odbJobName = job.job.endsWith('.inp') ? job.job.replace('.inp', '') : job.job;
-                    const odbPath = path.join(projectPath, `${job.p}_${job.l}`, `${odbJobName}.odb`);
-                    if (fs.existsSync(odbPath)) {
-                        console.log(`Preferring job with existing ODB: ${job.job} in ${job.p}_${job.l}`);
-                        return job;
-                    }
-                }
-                // If no ODB found, return first match
-                return result.rows[0];
-            }
-        }
-        return null;
-    }    // Function to execute Abaqus job with enhanced dependency handling
+    }// Function to execute Abaqus job with enhanced dependency handling
     function executeAbaqusJob(folderPath, jobName, oldJobName) {
         return new Promise((resolve) => {
             try {
@@ -1625,9 +1643,8 @@ app.get('/api/check-job-status', (req, res) => {
             message: 'All parameters are required'
         });
     }
-    
-    const combinedFolderName = `${projectName}_${protocol}`;
-    const jobPath = path.join(__dirname, 'abaqus', combinedFolderName, folderName);
+      const combinedFolderName = `${projectName}_${protocol}`;
+    const jobPath = path.join(__dirname, 'projects', combinedFolderName, folderName);
     
     try {
         // Check for various file types to determine job status

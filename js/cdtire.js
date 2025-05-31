@@ -40,8 +40,8 @@ document.getElementById('submitBtn').addEventListener('click', function() {
         workbook.SheetNames.forEach((sheetName) => {
             const worksheet = workbook.Sheets[sheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-            
-            const replacements = {
+              const replacements = {
+                'P1': document.getElementById('p1').value.trim() || null,
                 'L1': document.getElementById('l1').value.trim() || null,
                 'L2': document.getElementById('l2').value.trim() || null,
                 'L3': document.getElementById('l3').value.trim() || null,
@@ -49,8 +49,7 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                 'L5': document.getElementById('l5').value.trim() || null,
                 'VEL': document.getElementById('vel').value.trim() || null,
                 'SR': document.getElementById('sr').value.trim() || null,
-                'IA': document.getElementById('ia').value.trim() || null,
-                'IPref': document.getElementById('p1').value.trim() || null
+                'IA': document.getElementById('ia').value.trim() || null
             };
 
             const newSheet = jsonData.map((row, rowIndex) => {
@@ -62,9 +61,7 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                 
                 const modifiedRow = row.map(cell => {
                     if (!cell) return cell;
-                    const cellStr = String(cell).trim();
-                    
-                    // Store original P values before replacement
+                    const cellStr = String(cell).trim();                    // Store original P values before replacement
                     if (cellStr.match(/^P[1-3]$/) || cellStr.toLowerCase() === 'ipref') {
                         originalPValues.push(cellStr);
                     }
@@ -90,9 +87,8 @@ document.getElementById('submitBtn').addEventListener('click', function() {
                         const srValue = parseFloat(document.getElementById('sr').value.trim());
                         return cellStr.startsWith('-') ? (-Math.abs(srValue)).toString() : srValue.toString();
                     }
-                    
-                    // Handle P1 case-insensitively
-                    if (cellStr.toLowerCase() === 'P1') {
+                      // Handle P1 case-insensitively and also replace IPref with P1
+                    if (cellStr.toLowerCase() === 'p1' || cellStr.toLowerCase() === 'ipref') {
                         return document.getElementById('p1').value.trim();
                     }
                     

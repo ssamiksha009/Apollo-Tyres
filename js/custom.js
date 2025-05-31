@@ -35,56 +35,32 @@ document.getElementById('submitBtn').addEventListener('click', function() {
     const errorMessage = document.getElementById('errorMessage');
     errorMessage.textContent = '';
     
-    // Only check if customProtocolFile is selected, since it's the only required field
-    const customProtocolFile = document.getElementById('customProtocolFile').files[0];
-    
-    if (!customProtocolFile) {
-        errorMessage.textContent = 'Custom Protocol file is required';
-        errorMessage.style.display = 'block';
-        return;
-    }
-    
-    // First upload custom protocol file
-    const formData = new FormData();
-    formData.append('customProtocolFile', customProtocolFile);
-    
-    fetch('/api/upload-custom-protocol', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (!data.success) {
-            throw new Error(data.message || 'Failed to upload custom protocol file');
-        }
+    // Check for mesh file and upload if present
+    const meshFile = document.getElementById('meshFile').files[0];
+    if (meshFile) {
+        const meshFormData = new FormData();
+        meshFormData.append('meshFile', meshFile);
         
-        // Check for mesh file and upload if present
-        const meshFile = document.getElementById('meshFile').files[0];
-        if (meshFile) {
-            const meshFormData = new FormData();
-            meshFormData.append('meshFile', meshFile);
-            
-            return fetch('/api/upload-mesh-file', {
-                method: 'POST',
-                body: meshFormData
-            })
-            .then(response => response.json())
-            .then(meshData => {
-                if (!meshData.success) {
-                    throw new Error(meshData.message || 'Failed to upload mesh file');
-                }
-                // Continue with Excel processing
-                return processCustomExcel();
-            });
-        } else {
-            // No mesh file, proceed directly with Excel processing
-            return processCustomExcel();
-        }
-    })
-    .catch(error => {
-        errorMessage.style.color = '#d9534f';
-        errorMessage.textContent = error.message || 'Error processing files. Please try again.';
-    });
+        fetch('/api/upload-mesh-file', {
+            method: 'POST',
+            body: meshFormData
+        })
+        .then(response => response.json())
+        .then(meshData => {
+            if (!meshData.success) {
+                throw new Error(meshData.message || 'Failed to upload mesh file');
+            }
+            // Continue with Excel processing
+            processCustomExcel();
+        })
+        .catch(error => {
+            errorMessage.style.color = '#d9534f';
+            errorMessage.textContent = error.message || 'Error uploading mesh file. Please try again.';
+        });
+    } else {
+        // No mesh file, proceed directly with Excel processing
+        processCustomExcel();
+    }
 });
 
 // Extract Excel processing to a separate function
@@ -245,8 +221,7 @@ function processCustomExcel() {
                         
                         if (headerRowIndex === -1) return;
                         
-                        const headerRow = jsonData[headerRowIndex];
-                        const columns = {
+                        const headerRow = jsonData[headerRowIndex];                        const columns = {
                             runs: headerRow.indexOf('Number Of Tests'),
                             tests: headerRow.indexOf('Tests'),
                             ips: headerRow.indexOf('Inflation Pressure [PSI]'),
@@ -257,7 +232,6 @@ function processCustomExcel() {
                             test_velocity: headerRow.indexOf('Test Velocity [Kmph]'),
                             cleat_orientation: headerRow.indexOf('Cleat Orientation (w.r.t axial direction) [°]'),
                             displacement: headerRow.indexOf('Displacement [mm]'),
-                            protocol: headerRow.indexOf('Protocol'),
                             job: headerRow.indexOf('Job'),
                             old_job: headerRow.indexOf('Old Job')
                         };
@@ -269,10 +243,7 @@ function processCustomExcel() {
                         // Extract data rows
                         for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
                             const row = jsonData[i];
-                            if (!row || !row[columns.runs]) continue;
-
-                            extractedData.push({
-                                protocol: row[columns.protocol]?.toString() || '',
+                            if (!row || !row[columns.runs]) continue;                            extractedData.push({
                                 number_of_runs: parseInt(row[columns.runs]),
                                 tests: row[columns.tests]?.toString() || '',
                                 inflation_pressure: row[columns.ips]?.toString() || '',
@@ -342,6 +313,24 @@ function processCustomExcel() {
         .then(data => {
             if (!data.success) {
                 throw new Error(data.message || 'Error generating parameter file');
+            }
+            
+            const projectName = sessionStorage.getItem('currentProject') || 'DefaultProject';
+            return fetch('/api/create-protocol-folders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    projectName: projectName,
+                    protocol: 'Custom'
+                })
+            });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.message || 'Error creating protocol folders');
             }
             updateTestSummary();
             window.location.href = '/select.html';

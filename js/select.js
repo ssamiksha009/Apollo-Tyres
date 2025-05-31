@@ -140,7 +140,10 @@ function displayMF62Data(data) {
     
     tableBody.innerHTML = ''; // Clear existing data
     
-    data.forEach(row => {
+    // Filter out rows where tests field is empty
+    const filteredData = data.filter(row => row.tests && row.tests.trim() !== '');
+    
+    filteredData.forEach(row => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${row.number_of_runs}</td>
@@ -177,7 +180,10 @@ function displayMF52Data(data) {
     
     tableBody.innerHTML = ''; // Clear existing data
     
-    data.forEach(row => {
+    // Filter out rows where tests field is empty
+    const filteredData = data.filter(row => row.tests && row.tests.trim() !== '');
+    
+    filteredData.forEach(row => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${row.number_of_runs}</td>
@@ -214,7 +220,10 @@ function displayFTireData(data) {
     
     tableBody.innerHTML = '';
     
-    data.forEach(row => {
+    // Filter out rows where tests field is empty
+    const filteredData = data.filter(row => row.tests && row.tests.trim() !== '');
+    
+    filteredData.forEach(row => {
         const tr = document.createElement('tr');
         // Updated order to match Excel columns:
         // S.No, Test, Load (N), IP (Kpa), Speed (kmph), Longitudinal Slip (%), Slip Angle (deg), Inclination Angle (deg), Cleat Orientation (deg)
@@ -254,7 +263,10 @@ function displayCDTireData(data) {
     
     tableBody.innerHTML = '';
     
-    data.forEach(row => {
+    // Filter out rows where test_name field is empty
+    const filteredData = data.filter(row => row.test_name && row.test_name.trim() !== '');
+    
+    filteredData.forEach(row => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${row.number_of_runs}</td>
@@ -294,11 +306,13 @@ function displayCustomData(data) {
     
     tableBody.innerHTML = '';
     
-    data.forEach(row => {
+    // Filter out rows where tests field is empty
+    const filteredData = data.filter(row => row.tests && row.tests.trim() !== '');
+    
+    filteredData.forEach(row => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${row.number_of_runs}</td>
-            <td>${row.protocol || 'Custom'}</td>
             <td>${row.tests}</td>
             <td>${row.inflation_pressure}</td>
             <td>${row.loads}</td>
@@ -383,6 +397,4 @@ async function runSingleAnalysis(runNumber) {
     }
 }
 
-document.getElementById('runBtn').addEventListener('click', async function() {
-    alert('Please use individual "Run" buttons for each test row. Bulk execution is currently disabled in favor of dependency-aware execution.');
-});
+

@@ -88,9 +88,10 @@ function processMFExcel() {
             workbook.SheetNames.forEach((sheetName) => {
                 const worksheet = workbook.Sheets[sheetName];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-                
-                const replacements = {
+                  const replacements = {
                     'P1': document.getElementById('p1').value.trim() || null,
+                    'P2': document.getElementById('p2').value.trim() || null,
+                    'P3': document.getElementById('p3').value.trim() || null,
                     'L1': document.getElementById('l1').value.trim() || null,
                     'L2': document.getElementById('l2').value.trim() || null,
                     'L3': document.getElementById('l3').value.trim() || null,
