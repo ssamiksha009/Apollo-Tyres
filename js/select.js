@@ -390,7 +390,7 @@ async function runSingleAnalysis(runNumber) {
 
     } catch (error) {
         console.error('Error during job execution:', error);
-        statusCell.textContent = 'Error ✕';
+        statusCell.textContent = 'Error ⚠️';
         statusCell.style.color = '#dc3545';
         runButton.disabled = false;
         alert('Error during job execution: ' + error.message);

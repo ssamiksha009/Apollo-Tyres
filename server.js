@@ -1088,52 +1088,6 @@ app.post('/api/generate-parameters', (req, res) => {
     }
 });
 
-app.post('/api/run-abaqus-jobs', (req, res) => {
-    const { projectName, protocol, runNumber } = req.body;
-    const combinedFolderName = `${projectName}_${protocol}`;
-    const projectPath = path.join(__dirname, 'projects', combinedFolderName);
-    const pythonScript = path.join(__dirname, 'scripts', 'run_abaqus.py');
-
-    try {
-        if (!fs.existsSync(projectPath)) {
-            return res.status(404).json({
-                success: false,
-                message: 'Project folder not found'
-            });
-        }
-
-        const args = [pythonScript, projectPath];
-        if (runNumber) {
-            args.push(runNumber);
-        }
-
-        // Run Python script with error handling
-        const pythonProcess = spawn('python', args, {
-            shell: true,
-            detached: true
-        });
-
-        // Handle process errors and termination
-        pythonProcess.on('error', (err) => {
-            console.error('Python process error:', err);
-        });
-
-        pythonProcess.unref();
-
-        res.json({
-            success: true,
-            message: 'Analysis started'
-        });
-
-    } catch (err) {
-        console.error('Error launching process:', err);
-        res.status(500).json({
-            success: false,
-            message: 'Error launching process: ' + err.message
-        });
-    }
-});
-
 // Configure multer for mesh file upload (temporary storage)
 const meshFileStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -1302,7 +1256,6 @@ app.post('/api/create-protocol-folders', (req, res) => {
             try {
                 if (fs.existsSync(tempDir)) {
                     fs.rmSync(tempDir, { recursive: true, force: true });
-                    console.log('Temp directory cleaned up successfully');
                 }
             } catch (cleanupErr) {
                 console.error('Error cleaning up temp directory:', cleanupErr);
