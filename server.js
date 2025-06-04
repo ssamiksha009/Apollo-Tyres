@@ -1447,12 +1447,12 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
             
             // Step 4: Execute current job after all dependencies are resolved
             console.log(`Step 4: Executing job "${odbJobName}" in folder ${folderName}...`);
-            const executeResult = await executeAbaqusJob(folderPath, odbJobName, jobData.old_job);
+            const executeResult = await executeAbaqusJob(folderPath, odbJobName, jobData.old_job, folderName);
             if (!executeResult.success) {
-                throw new Error(`Failed to execute job ${odbJobName}: ${executeResult.message}`);
+                throw new Error(`Failed to execute job ${odbJobName} in folder ${folderName}: ${executeResult.message}`);
             }
             
-            console.log(`✓ Successfully executed job "${odbJobName}"`);
+            console.log(`✓ Successfully executed job "${odbJobName}" in folder ${folderName}`);
             return { success: true, message: `Job ${odbJobName} executed successfully` };
             
         } catch (error) {
@@ -1476,7 +1476,7 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
         }
         return null;
     }// Function to execute Abaqus job with enhanced dependency handling
-    function executeAbaqusJob(folderPath, jobName, oldJobName) {
+    function executeAbaqusJob(folderPath, jobName, oldJobName, folderName = '') {
         return new Promise((resolve) => {
             try {
                 // Ensure job names are clean (without .inp for command execution)
@@ -1487,10 +1487,10 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
                 if (oldJobName && oldJobName !== '-') {
                     const cleanOldJobName = oldJobName.endsWith('.inp') ? oldJobName.replace('.inp', '') : oldJobName;
                     command = `abaqus job=${cleanJobName} oldjob=${cleanOldJobName} input=${cleanJobName}.inp`;
-                    console.log(`Executing with dependency: ${command}`);
+                    console.log(`Executing with dependency in ${folderName}: ${command}`);
                 } else {
                     command = `abaqus job=${cleanJobName} input=${cleanJobName}.inp`;
-                    console.log(`Executing without dependency: ${command}`);
+                    console.log(`Executing without dependency in ${folderName}: ${command}`);
                 }
                 
                 console.log(`Working directory: ${folderPath}`);
@@ -1512,13 +1512,13 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
                 });
                 
                 abaqusProcess.on('close', (code) => {
-                    console.log(`Process finished with exit code: ${code}`);
+                    console.log(`Process finished with exit code: ${code} for job ${cleanJobName} in ${folderName}`);
                     if (code === 0) {
                         resolve({ success: true, output: output });
                     } else {
                         resolve({ 
                             success: false, 
-                            message: `Process exited with code ${code}`,
+                            message: `Process exited with code ${code} in folder ${folderName}`,
                             error: errorOutput,
                             output: output
                         });
@@ -1526,18 +1526,18 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
                 });
                 
                 abaqusProcess.on('error', (error) => {
-                    console.error(`Process spawn error: ${error.message}`);
+                    console.error(`Process spawn error in ${folderName}: ${error.message}`);
                     resolve({ 
                         success: false, 
-                        message: `Failed to start process: ${error.message}` 
+                        message: `Failed to start process in ${folderName}: ${error.message}` 
                     });
                 });
                 
             } catch (error) {
-                console.error(`Function execution error: ${error.message}`);
+                console.error(`Function execution error in ${folderName}: ${error.message}`);
                 resolve({ 
                     success: false, 
-                    message: `Error executing job: ${error.message}` 
+                    message: `Error executing job in ${folderName}: ${error.message}` 
                 });
             }
         });
