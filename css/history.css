@@ -1,0 +1,244 @@
+.history-container {
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 1200px;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    margin-top: 20px;
+}
+
+.history-table th,
+.history-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.history-table th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+    color: #333;
+}
+
+.history-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+.status-completed {
+    color: #28a745;
+}
+
+.status-in-progress {
+    color: #ffc107;
+}
+
+.status-not-started {
+    color: #dc3545;
+}
+
+.action-button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    transition: background-color 0.2s;
+}
+
+.action-button:hover {
+    background-color: #0056b3;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    display: none;
+}
+
+.error-message {
+    color: #dc3545;
+    text-align: center;
+    padding: 20px;
+    display: none;
+}
+
+.no-data-message {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-style: italic;
+}
+
+.search-container {
+    margin-bottom: 20px;
+}
+
+.search-box {
+    width: 100%;
+    padding: 2px 12px;
+    /* Adjust padding to match button height */
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    height: 42px;
+    padding-bottom: 0px;
+    /* Match the height of new-request-button */
+}
+
+.search-box:focus {
+    border-color: #582c7c;
+    box-shadow: 0 1px 3px rgba(88, 44, 124, 0.2);
+    outline: none;
+}
+
+.table-header {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.search-and-new {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.date-filters {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.date-filter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.date-input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    height: 42px;
+}
+
+.filter-button {
+    padding: 8px 16px;
+    background-color: #582c7c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+    transition: background-color 0.3s;
+}
+
+.filter-button:hover {
+    background-color: #4a2568;
+}
+
+.filter-button i {
+    font-size: 16px;
+}
+
+/* Update responsive design */
+@media screen and (max-width: 1200px) {
+    .date-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .date-filter {
+        flex-wrap: wrap;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .table-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .search-container {
+        width: 100%;
+    }
+
+    .new-request-button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+.new-request-button {
+    padding: 10px 20px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.new-request-button:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.new-request-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.new-request-button i {
+    font-size: 16px;
+}
+
+/* Add animation for the plus icon */
+.new-request-button:hover i {
+    animation: rotate-icon 0.5s ease;
+}
+
+@keyframes rotate-icon {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(180deg);
+    }
+}
+
+/* Responsive design */
+@media screen and (max-width: 768px) {
+    .new-request-button {
+        width: 100%;
+        justify-content: center;
+        margin-top: 10px;
+    }
+}

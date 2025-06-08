@@ -1,0 +1,209 @@
+/* Reset some basic elements */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    line-height: 1.6;
+    /* Make the body take up the full viewport height */
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header styling */
+.main-header {
+    background-color: #582C7C;
+    /* Purple color for Apollo Tyres */
+    height: 80px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0;
+    position: relative;
+}
+
+/* Logo styling */
+.logo-container {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    margin: 0;
+}
+
+.logo {
+    height: 100%;
+    width: auto;
+    margin: 0;
+    padding: 0;
+}
+
+/* Header title styling */
+.header-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-size: 35px;
+    /* Increased from 24px to 35px */
+    white-space: nowrap;
+}
+
+/* Main content area */
+main {
+    flex: 1;
+    padding: 30px;
+}
+
+/* Dropdown container */
+.dropdown-container {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    max-width: 1200px;
+    margin: 20px auto;
+}
+
+/* Individual dropdown group */
+.dropdown-group {
+    margin: 10px;
+    min-width: 200px;
+    flex: 1;
+}
+
+.dropdown-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.dropdown-group select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.dropdown-group input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.dropdown-group input[type="text"]:focus {
+    outline: none;
+    border-color: #582C7C;
+    box-shadow: 0 0 5px rgba(88, 44, 124, 0.3);
+}
+
+/* Submit button container */
+.submit-container {
+    text-align: center;
+    margin: 30px auto;
+}
+
+/* Submit button styling */
+.submit-button {
+    padding: 12px 40px;
+    background-color: #2E8B57;
+    /* Green color */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 18px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.submit-button:hover {
+    background-color: #216e43;
+    /* Darker green on hover */
+}
+
+/* Error message styling */
+.error-message {
+    color: #d9534f;
+    text-align: center;
+    font-weight: bold;
+    margin-top: 10px;
+    min-height: 20px;
+}
+
+/* Footer styling */
+footer {
+    padding: 20px;
+    text-align: center;
+}
+
+/* Responsive design for laptop screens */
+@media screen and (min-width: 1024px) and (max-width: 1920px) {
+    main {
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+}
+
+/* Add this to your existing index.css file */
+
+/* Logout button container */
+.logout-container {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.logout-button {
+    padding: 8px 15px;
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.logout-button:hover {
+    background-color: #c9302c;
+}
+
+/* Add after your existing button styles */
+
+.button-container {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 10px;
+}
+
+.home-button {
+    padding: 8px 15px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.home-button:hover {
+    background-color: #218838;
+}
+
+.home-button i {
+    font-size: 16px;
+}

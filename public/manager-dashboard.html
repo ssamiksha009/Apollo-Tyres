@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manager Dashboard</title>
+    <link rel="stylesheet" href="/css/login.css">
+    <style>
+        body {
+            background: linear-gradient(120deg, #f8fafc 0%, #fbeee6 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .dashboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(90deg, #4B2994 60%, #fa893e 100%);
+            color: #fff;
+            border-radius: 0 0 24px 24px;
+            box-shadow: 0 4px 24px rgba(44,25,124,0.10);
+            padding: 0 40px 0 32px;
+            min-height: 90px;
+        }
+        .dashboard-header-left {
+            display: flex;
+            align-items: center;
+        }
+        .dashboard-logo img {
+            height: 60px;
+            width: auto;
+            display: block;
+        }
+        .dashboard-title-block {
+            margin-left: 22px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .dashboard-header h1 {
+            margin: 0;
+            font-size: 2.1rem;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 1px 2px 8px rgba(44,25,124,0.10);
+        }
+        .dashboard-header .subtitle {
+            font-size: 1rem;
+            color: #ffe0b2;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        .dashboard-header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .tyre-btn {
+    background: #4B2994;
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 8px;
+    transition: background 0.2s;
+}
+.tyre-btn:hover {
+    background: #6c3fc5;
+}
+        .profile-btn {
+            display: none !important;
+        }
+        .logout-btn {
+            background: #e53935;
+            color: #fff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .logout-btn:hover {
+            background: #b71c1c;
+        }
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px 32px 24px;
+        }
+        .dashboard-kpis {
+            display: flex;
+            gap: 32px;
+            margin: 36px 0 32px 0;
+        }
+        .kpi-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(44,25,124,0.06);
+            padding: 22px 36px;
+            text-align: left;
+            min-width: 170px;
+            flex: 1;
+        }
+        .kpi-title {
+            color: #4B2994;
+            font-size: 1.08rem;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .kpi-value {
+            color: #ff6600;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .search-bar-area {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 24px;
+        }
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border-radius: 24px;
+            box-shadow: 0 2px 8px rgba(44,25,124,0.06);
+            padding: 6px 16px;
+            gap: 10px;
+            border: 1.5px solid #ede9fe;
+            min-width: 340px;
+            max-width: 400px;
+            width: 100%;
+        }
+        .search-bar input {
+            border: none;
+            outline: none;
+            font-size: 1.08rem;
+            background: transparent;
+            width: 100%;
+            padding: 6px 0;
+        }
+        .search-bar select {
+            border: none;
+            outline: none;
+            font-size: 1.05rem;
+            background: transparent;
+            color: #4B2994;
+            padding: 4px 0 4px 8px;
+        }
+        .search-icon {
+            color: #4B2994;
+            font-size: 1.2rem;
+        }
+        .notifications-area {
+            max-width: 100%;
+            margin: 0 0 18px 0;
+            background: #fff3e0;
+            border-left: 6px solid #ff6600;
+            border-radius: 8px;
+            padding: 10px 22px;
+            color: #4B2994;
+            font-size: 1.02rem;
+            box-shadow: 0 2px 8px rgba(44,25,124,0.05);
+        }
+        .manager-details {
+            text-align: left;
+            margin-bottom: 18px;
+            color: #444;
+            font-size: 1.05rem;
+        }
+        .manager-details span {
+            font-weight: 600;
+            color: #ff6600;
+        }
+        .dashboard-table-container {
+            margin: 0;
+        }
+        #usersTable {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(44,25,124,0.10);
+            margin-bottom: 24px;
+        }
+        #usersTable th, #usersTable td {
+            padding: 12px 10px;
+            text-align: center;
+        }
+        #usersTable th {
+            background: #4B2994;
+            color: #fff;
+            font-size: 1.05rem;
+            border-bottom: 2px solid #ede9fe;
+        }
+        #usersTable tr:nth-child(even) {
+            background: #f3f0fa;
+        }
+        #usersTable tr:nth-child(odd) {
+            background: #fbeee6;
+        }
+        #usersTable tr:hover {
+            background: #ede9fe;
+            transition: background 0.2s;
+        }
+        #usersTable td {
+            color: #3b2562;
+            font-size: 0.98rem;
+        }
+        .error-message {
+            color: #e11d48;
+            text-align: left;
+            margin-top: 20px;
+        }
+        @media (max-width: 900px) {
+            .dashboard-header {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 12px 8px 12px 8px;
+            }
+            .dashboard-header-right {
+                margin-top: 12px;
+            }
+            .dashboard-logo img {
+                height: 40px;
+            }
+            .dashboard-title-block {
+                margin-left: 0;
+                margin-top: 10px;
+                align-items: flex-start;
+            }
+            .dashboard-kpis {
+                flex-direction: column;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="dashboard-header-left">
+            <div class="dashboard-logo">
+                <img src="/images/Apollo-Tyres-Logo.png" alt="Apollo Tyres Logo">
+            </div>
+            <div class="dashboard-title-block">
+                <h1>Manager Dashboard</h1>
+                <div class="subtitle">
+                    Welcome, <span id="managerEmail"></span> | Role: <span id="managerRole"></span>
+                </div>
+            </div>
+        </div>
+        <div class="dashboard-header-right">
+            <button class="tyre-btn" onclick="window.location.href='/index.html'">Tyre Virtualization</button>
+            <!-- <button class="profile-btn" onclick="openProfileModal()">Profile/Settings</button> -->
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    <div class="dashboard-container">
+        <div class="dashboard-kpis">
+            <div class="kpi-card">
+                <div class="kpi-title">Total Engineers</div>
+                <div class="kpi-value" id="totalEngineers">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Total Projects</div>
+                <div class="kpi-value" id="totalProjects">0</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Active Engineers (7d)</div>
+                <div class="kpi-value" id="activeEngineers">0</div>
+            </div>
+        </div>
+        <div class="search-bar-area">
+            <form class="search-bar" onsubmit="event.preventDefault();">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" id="searchInput" placeholder="Search engineers by email...">
+                <select id="activityFilter">
+                    <option value="">All Activity</option>
+                    <option value="active">Active (7d)</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </form>
+        </div>
+        <div class="notifications-area" id="notificationsArea" style="display:none;"></div>
+        <div class="manager-details">
+            Monitor all <span>engineers</span> and their activities in real time.
+            Use the <b>Tyre Virtualization</b> button to access the main tool.
+        </div>
+        <div class="dashboard-table-container">
+            <table id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Created At</th>
+                        <th>Last Login</th>
+                        <th>Project Count</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div id="errorMessage" class="error-message"></div>
+    </div>
+    <script src="/js/manager-dashboard.js"></script>
+    <script>
+        // Show manager info from JWT/localStorage
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const token = localStorage.getItem('authToken');
+                if (token) {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    document.getElementById('managerEmail').textContent = payload.email;
+                    document.getElementById('managerRole').textContent = payload.role.charAt(0).toUpperCase() + payload.role.slice(1);
+                }
+            } catch {}
+        });
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.href = '/login.html';
+        }
+    </script>
+</body>
+</html>

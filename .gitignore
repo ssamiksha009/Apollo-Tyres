@@ -1,0 +1,8 @@
+node_modules
+package.json
+package-lock.json
+output.xlsx
+templates/inc/parameters.inc
+abaqus/*/
+projects/*/
+templates/inc/MF6pt2/*/
