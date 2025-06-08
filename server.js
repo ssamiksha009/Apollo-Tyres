@@ -1,5 +1,5 @@
 const express = require('express');
-const { Pool } = require('pg'); 
+const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const path = require('path');
@@ -20,29 +20,29 @@ app.use(express.static(path.join(__dirname, 'public')));
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'postgres',    // Changed from 'root' to default PostgreSQL user        
-    password: process.env.DB_PASSWORD || '0306',      
+    password: process.env.DB_PASSWORD || 'samiksha12',
     port: process.env.DB_PORT || 5432   // Added port for PostgreSQL
 };
 
 // Create a function to connect with retry
 function connectWithRetry(maxRetries = 10, delay = 5000) {
     let retries = 0;
-    
+
     // First connect to default 'postgres' database to check/create our database
     const rootPool = new Pool({
         ...dbConfig,
         database: 'postgres'  // Connect to default PostgreSQL database
     });
-    
+
     // Function to create database if not exists and then connect to it
     const setupDatabase = async () => {
         try {
             // Check if database exists
             const dbCheckResult = await rootPool.query(
-                "SELECT 1 FROM pg_database WHERE datname = $1", 
+                "SELECT 1 FROM pg_database WHERE datname = $1",
                 ['apollo_tyres']
             );
-            
+
             // Create database if it doesn't exist
             if (dbCheckResult.rows.length === 0) {
                 console.log('Database apollo_tyres does not exist, creating it now...');
@@ -51,16 +51,16 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
             } else {
                 console.log('Database apollo_tyres already exists');
             }
-            
+
             // Close the connection to postgres database
             await rootPool.end();
-            
+
             // Now create the connection pool to our application database
             const pool = new Pool({
                 ...dbConfig,
                 database: 'apollo_tyres'
             });
-            
+
             return pool;
         } catch (error) {
             console.error('Error setting up database:', error);
@@ -68,16 +68,16 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
             throw error;
         }
     };
-    
+
     // Function to try connecting with retry logic
     const tryConnect = async () => {
         try {
             const pool = await setupDatabase();
-            
+
             // Test connection
             await pool.query('SELECT NOW()');
             console.log('Connected to PostgreSQL database');
-            
+
             // Create the user table if it doesn't exist
             const createTableQuery = `
                 CREATE TABLE IF NOT EXISTS users (
@@ -88,13 +88,13 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `;
-            
+
             pool.query(createTableQuery, (err) => {
                 if (err) {
                     console.error('Error creating users table:', err);
                     return;
                 }
-                
+
                 // Check if admin user exists, if not create it
                 const checkAdminQuery = 'SELECT * FROM users WHERE email = $1';
                 pool.query(checkAdminQuery, ['admin@apollotyres.com'], (err, results) => {
@@ -102,7 +102,7 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                         console.error('Error checking admin user:', err);
                         return;
                     }
-                    
+
                     if (results.rowCount === 0) {
                         // Create admin user with password Apollo@123
                         bcrypt.hash('Apollo@123', 10, (err, hash) => {
@@ -110,7 +110,7 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                                 console.error('Error hashing password:', err);
                                 return;
                             }
-                            
+
                             const insertAdminQuery = 'INSERT INTO users (email, password) VALUES ($1, $2)';
                             pool.query(insertAdminQuery, ['admin@apollotyres.com', hash], (err) => {
                                 if (err) {
@@ -141,7 +141,7 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                     l VARCHAR(255)
                 )
             `;
-            
+
             pool.query(createMFDataTable, (err) => {
                 if (err) {
                     console.error('Error creating mf_data table:', err);
@@ -257,13 +257,36 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
                 console.log('Custom data table created successfully');
             });
 
+            // Add this near other table creation queries
+            const createProjectsTable = `
+                CREATE TABLE IF NOT EXISTS projects (
+                    id SERIAL PRIMARY KEY,
+                    project_name VARCHAR(255) NOT NULL,
+                    region VARCHAR(100) NOT NULL,
+                    department VARCHAR(100) NOT NULL,
+                    tyre_size VARCHAR(100) NOT NULL,
+                    protocol VARCHAR(50) NOT NULL,
+                    status VARCHAR(50) DEFAULT 'Not Started',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP
+                )
+            `;
+
+            pool.query(createProjectsTable, (err) => {
+                if (err) {
+                    console.error('Error creating projects table:', err);
+                    return;
+                }
+                console.log('Projects table created successfully');
+            });
+
             return pool;
         } catch (err) {
             console.error(`Error connecting to PostgreSQL database (attempt ${retries + 1}):`, err);
-            
+
             if (retries < maxRetries) {
                 retries++;
-                console.log(`Retrying in ${delay/1000} seconds...`);
+                console.log(`Retrying in ${delay / 1000} seconds...`);
                 return new Promise(resolve => {
                     setTimeout(() => resolve(tryConnect()), delay);
                 });
@@ -273,7 +296,7 @@ function connectWithRetry(maxRetries = 10, delay = 5000) {
             }
         }
     };
-    
+
     return tryConnect();
 }
 
@@ -301,75 +324,101 @@ app.use('/images', express.static(path.join(__dirname, 'images')));
 // Login API endpoint
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
-    
+
     // Basic validation
     if (!email || !password) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Email and password are required' 
+        return res.status(400).json({
+            success: false,
+            message: 'Email and password are required'
         });
     }
-    
+
     // Query database for user
     const query = 'SELECT * FROM users WHERE email = $1';
     db.query(query, [email], (err, results) => {
         if (err) {
             console.error('Database error:', err);
-            return res.status(500).json({ 
-                success: false, 
-                message: 'Internal server error' 
+            return res.status(500).json({
+                success: false,
+                message: 'Internal server error'
             });
         }
-        
+
         // Check if user exists
         if (results.rows.length === 0) {
-            return res.status(401).json({ 
-                success: false, 
-                message: 'Invalid email or password' 
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid email or password'
             });
         }
-        
+
         const user = results.rows[0];
-        
+
         // Compare password
         bcrypt.compare(password, user.password, (err, isMatch) => {
             if (err) {
                 console.error('Password comparison error:', err);
-                return res.status(500).json({ 
-                    success: false, 
-                    message: 'Internal server error' 
+                return res.status(500).json({
+                    success: false,
+                    message: 'Internal server error'
                 });
             }
-            
+
             if (!isMatch) {
-                return res.status(401).json({ 
-                    success: false, 
-                    message: 'Invalid email or password' 
+                return res.status(401).json({
+                    success: false,
+                    message: 'Invalid email or password'
                 });
             }
-            
+
             // Create JWT token
             const token = jwt.sign(
-                { userId: user.id, email: user.email },
+                { userId: user.id, email: user.email, role: user.role },
                 JWT_SECRET,
                 { expiresIn: '1h' }
             );
-            
+
             // Return success with token
-            return res.json({ 
-                success: true, 
+            return res.json({
+                success: true,
                 token: token,
-                message: 'Login successful' 
+                message: 'Login successful'
             });
         });
     });
 });
 
+// ...existing code...
+
+app.post('/api/register', async (req, res) => {
+    const { email, password, role } = req.body;
+    if (!email || !password || !role) {
+        return res.status(400).json({ success: false, message: 'All fields are required.' });
+    }
+    try {
+        // Hash password for security (uncomment for production)
+        // const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = password; // Store as plain text for now (not recommended)
+        await db.query(
+            'INSERT INTO users (email, password, role) VALUES ($1, $2, $3)',
+            [email, hashedPassword, role]
+        );
+        res.json({ success: true, message: 'User registered successfully.' });
+    } catch (err) {
+        if (err.code === '23505') { // Unique violation
+            res.status(409).json({ success: false, message: 'Email already exists.' });
+        } else {
+            res.status(500).json({ success: false, message: 'Registration failed.' });
+        }
+    }
+});
+// ...existing code...
+
 // Token verification endpoint
 app.get('/api/verify-token', authenticateToken, (req, res) => {
     // If authentication middleware passes, token is valid
-    res.json({ 
-        success: true, 
+    res.json({
+        success: true,
         user: { email: req.user.email }
     });
 });
@@ -378,25 +427,33 @@ app.get('/api/verify-token', authenticateToken, (req, res) => {
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    
+
     if (!token) {
-        return res.status(401).json({ 
-            success: false, 
-            message: 'Authentication token required' 
+        return res.status(401).json({
+            success: false,
+            message: 'Authentication token required'
         });
     }
-    
+
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Invalid or expired token' 
+            return res.status(403).json({
+                success: false,
+                message: 'Invalid or expired token'
             });
         }
-        
+
         req.user = user;
         next();
     });
+}
+
+// New middleware to require manager role
+function requireManager(req, res, next) {
+    if (!req.user || req.user.role !== 'manager') {
+        return res.status(403).json({ success: false, message: 'Manager access required' });
+    }
+    next();
 }
 
 // Configure multer for file upload
@@ -445,7 +502,7 @@ function clearProjectsFolder() {
 // Replace the existing store-excel-data endpoint with this modified version
 app.post('/api/store-excel-data', (req, res) => {
     const { data } = req.body;
-    
+
     if (!Array.isArray(data) || !data.length) {
         return res.status(400).json({
             success: false,
@@ -471,7 +528,7 @@ app.post('/api/store-excel-data', (req, res) => {
                 (number_of_runs, tests, ips, loads, ias, sa_range, sr_range, test_velocity, job, old_job, p, l)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             `;
-            
+
             return db.query(insertQuery, [
                 row.number_of_runs,
                 row.tests,
@@ -529,23 +586,23 @@ app.get('/api/read-protocol-excel', (req, res) => {
     }
 
     const filePath = path.join(protocolDir, fileName);
-    
+
     if (!fs.existsSync(protocolDir)) {
         fs.mkdirSync(protocolDir, { recursive: true });
     }
-    
+
     if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ 
-            success: false, 
-            message: `${fileName} not found in protocol folder` 
+        return res.status(404).json({
+            success: false,
+            message: `${fileName} not found in protocol folder`
         });
     }
 
     fs.readFile(filePath, (err, data) => {
         if (err) {
-            return res.status(500).json({ 
-                success: false, 
-                message: 'Error reading Excel file' 
+            return res.status(500).json({
+                success: false,
+                message: 'Error reading Excel file'
             });
         }
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -556,20 +613,20 @@ app.get('/api/read-protocol-excel', (req, res) => {
 // Add new endpoint for reading output Excel file
 app.get('/api/read-output-excel', (req, res) => {
     const filePath = path.join(__dirname, 'protocol', 'output.xlsx');
-    
+
     if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ 
-            success: false, 
-            message: 'Output file not found' 
+        return res.status(404).json({
+            success: false,
+            message: 'Output file not found'
         });
     }
 
     fs.readFile(filePath, (err, data) => {
         if (err) {
             console.error('Error reading Excel file:', err);
-            return res.status(500).json({ 
-                success: false, 
-                message: 'Error reading Excel file' 
+            return res.status(500).json({
+                success: false,
+                message: 'Error reading Excel file'
             });
         }
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -601,7 +658,7 @@ app.get('/api/get-test-summary', (req, res) => {
         GROUP BY tests
         ORDER BY count DESC
     `;
-    
+
     db.query(query, (err, results) => {
         if (err) {
             console.error('Error fetching test summary:', err);
@@ -617,7 +674,7 @@ app.get('/api/get-test-summary', (req, res) => {
 // Add new endpoint to get MF 5.2 data
 app.post('/api/store-mf52-data', (req, res) => {
     const { data } = req.body;
-    
+
     if (!Array.isArray(data) || !data.length) {
         return res.status(400).json({
             success: false,
@@ -643,7 +700,7 @@ app.post('/api/store-mf52-data', (req, res) => {
                  slip_angle, slip_ratio, test_velocity, job, old_job, p, l)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
             `;
-            
+
             return db.query(insertQuery, [
                 row.number_of_runs,
                 row.tests,
@@ -699,7 +756,7 @@ app.get('/api/get-mf52-summary', (req, res) => {
         GROUP BY tests
         ORDER BY count DESC
     `;
-    
+
     db.query(query, (err, results) => {
         if (err) {
             console.error('Error fetching MF 5.2 summary:', err);
@@ -715,7 +772,7 @@ app.get('/api/get-mf52-summary', (req, res) => {
 // Add FTire data endpoints with correct columns
 app.post('/api/store-ftire-data', (req, res) => {
     const { data } = req.body;
-    
+
     if (!Array.isArray(data) || !data.length) {
         return res.status(400).json({
             success: false,
@@ -740,7 +797,7 @@ app.post('/api/store-ftire-data', (req, res) => {
                  longitudinal_slip, slip_angle, inclination_angle, cleat_orientation, job, old_job, p, l)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             `;
-            
+
             return db.query(insertQuery, [
                 row.number_of_runs || 0,
                 row.tests || '',
@@ -795,7 +852,7 @@ app.get('/api/get-ftire-summary', (req, res) => {
         GROUP BY tests
         ORDER BY count DESC
     `;
-    
+
     db.query(query, (err, results) => {
         if (err) {
             return res.status(500).json({
@@ -809,7 +866,7 @@ app.get('/api/get-ftire-summary', (req, res) => {
 
 app.post('/api/store-cdtire-data', (req, res) => {
     const { data } = req.body;
-    
+
     if (!Array.isArray(data) || !data.length) {
         return res.status(400).json({
             success: false,
@@ -834,7 +891,7 @@ app.post('/api/store-cdtire-data', (req, res) => {
                  camber, slip_angle, displacement, slip_range, cleat, road_surface, job, old_job, p, l)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
             `;
-            
+
             return db.query(insertQuery, [
                 row.number_of_runs || 0,
                 row.test_name || '',
@@ -891,7 +948,7 @@ app.get('/api/get-cdtire-summary', (req, res) => {
         GROUP BY test_name
         ORDER BY count DESC
     `;
-    
+
     db.query(query, (err, results) => {
         if (err) {
             console.error('Error fetching CDTire summary:', err);
@@ -907,7 +964,7 @@ app.get('/api/get-cdtire-summary', (req, res) => {
 // Add Custom data endpoints
 app.post('/api/store-custom-data', (req, res) => {
     const { data } = req.body;
-    
+
     if (!Array.isArray(data) || !data.length) {
         return res.status(400).json({
             success: false,
@@ -931,7 +988,7 @@ app.post('/api/store-custom-data', (req, res) => {
                  cleat_orientation, displacement, job, old_job, p, l)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             `;
-            
+
             return db.query(insertQuery, [
                 row.number_of_runs || 0,
                 row.tests || '',
@@ -987,7 +1044,7 @@ app.get('/api/get-custom-summary', (req, res) => {
         GROUP BY tests
         ORDER BY count DESC
     `;
-    
+
     db.query(query, (err, results) => {
         if (err) {
             console.error('Error fetching Custom summary:', err);
@@ -1005,7 +1062,7 @@ app.post('/api/clear-folders', (req, res) => {
     const { projectName, protocol } = req.body;
     const combinedFolderName = `${projectName}_${protocol}`;
     const projectPath = path.join(__dirname, 'projects', combinedFolderName);
-    
+
     try {
         if (fs.existsSync(projectPath)) {
             rimraf.sync(projectPath);
@@ -1023,7 +1080,7 @@ app.post('/api/generate-parameters', (req, res) => {
     try {
         const referer = req.headers.referer || '';
         let templatePath;
-          // Select template based on protocol page
+        // Select template based on protocol page
         if (referer.includes('mf.html')) {
             templatePath = path.join(__dirname, 'templates', 'inc', 'mf62.inc');
         } else if (referer.includes('mf52.html')) {
@@ -1037,14 +1094,14 @@ app.post('/api/generate-parameters', (req, res) => {
         } else {
             throw new Error('Unknown protocol');
         }
-        
+
         // Generate parameters.inc in the central template location
         // This file will be copied to individual Px_Ly folders during project creation
         const outputPath = path.join(__dirname, 'templates', 'inc', 'parameters.inc');
-        
+
         // Read template file
         let content = fs.readFileSync(templatePath, 'utf8');
-        
+
         // Replace parameter values, being careful with line matching
         const data = req.body;
         const replacements = {
@@ -1123,161 +1180,56 @@ app.post('/api/upload-mesh-file', uploadMeshFile.single('meshFile'), (req, res) 
 
 // Add new endpoint for protocol-based folder creation on submit
 app.post('/api/create-protocol-folders', (req, res) => {
-    const { projectName, protocol } = req.body;    if (!projectName || !protocol) {
+    const { projectName, protocol } = req.body;
+
+    // Map protocol names to template folder names
+    const templateFolderMap = {
+        'MF62': 'MF6pt2',
+        'MF52': 'MF5pt2',
+        'FTire': 'FTire',
+        'CDTire': 'CDTire',
+        'Custom': 'Custom'
+    };
+
+    const templateFolder = templateFolderMap[protocol];
+    if (!templateFolder) {
         return res.status(400).json({
             success: false,
-            message: 'Project name and protocol are required'
+            message: 'Invalid protocol specified'
         });
     }
-      // Function to generate unique folder name
-    function generateUniqueFolderName(baseName, basePath) {
-        let counter = 1;
-        let uniqueName = baseName;
-        let fullPath = path.join(basePath, uniqueName);
-        
-        // If folder doesn't exist, use the original name
-        if (!fs.existsSync(fullPath)) {
-            return uniqueName;
-        }
-        
-        // If folder exists, remove it completely and create fresh
-        if (fs.existsSync(fullPath)) {
-            rimraf.sync(fullPath);
-        }
-        
-        return uniqueName;
-    }
-    
-    const baseCombinedName = `${projectName}_${protocol}`;
-    const basePath = path.join(__dirname, 'projects');
-    const combinedFolderName = generateUniqueFolderName(baseCombinedName, basePath);
-    const projectPath = path.join(basePath, combinedFolderName);
-    
+
     try {
-        // Create base project folder
-        if (!fs.existsSync(projectPath)) {
-            fs.mkdirSync(projectPath, { recursive: true });
+        const templatesDir = path.join(__dirname, 'templates', templateFolder);
+
+        // Check if template directory exists
+        if (!fs.existsSync(templatesDir)) {
+            fs.mkdirSync(templatesDir, { recursive: true });
+            // Create required subdirectories
+            fs.mkdirSync(path.join(templatesDir, 'inc'), { recursive: true });
+            fs.mkdirSync(path.join(templatesDir, 'input'), { recursive: true });
+            fs.mkdirSync(path.join(templatesDir, 'output'), { recursive: true });
         }
-        
-        // Map protocol names to their template folder names
-        const protocolMap = {
-            'MF62': 'MF6pt2',
-            'MF52': 'MF5pt2',
-            'FTire': 'FTire',
-            'CDTire': 'CDTire',
-            'Custom': 'Custom'
-        };
-        
-        const templateProtocolName = protocolMap[protocol];
-        if (!templateProtocolName) {
-            throw new Error(`Unknown protocol: ${protocol}`);
-        }
-        
-        const templatePath = path.join(__dirname, 'templates', templateProtocolName);
-        
-        if (!fs.existsSync(templatePath)) {
-            throw new Error(`Template folder not found: ${templatePath}`);
-        }
-        
-        // Copy all template subfolders (P1_L1, P1_L2, etc.) to the project folder
-        const subfolders = fs.readdirSync(templatePath).filter(item => 
-            fs.statSync(path.join(templatePath, item)).isDirectory()
-        );
-        
-        if (subfolders.length === 0) {
-            throw new Error(`No subfolders found in template: ${templatePath}`);
-        }
-        
-        subfolders.forEach(subfolder => {
-            const sourceSubfolder = path.join(templatePath, subfolder);
-            const destSubfolder = path.join(projectPath, subfolder);
-            
-            // Create destination subfolder
-            if (!fs.existsSync(destSubfolder)) {
-                fs.mkdirSync(destSubfolder, { recursive: true });
+
+        const combinedFolderName = `${projectName}_${protocol}`;
+        const projectPath = path.join(__dirname, 'projects', combinedFolderName);
+
+        // Create project directories
+        const subfolders = ['inc', 'input', 'output'];
+        subfolders.forEach(folder => {
+            const folderPath = path.join(projectPath, folder);
+            if (!fs.existsSync(folderPath)) {
+                fs.mkdirSync(folderPath, { recursive: true });
             }
-            
-            // Copy all files from template subfolder recursively
-            function copyFolderSync(src, dest) {
-                if (!fs.existsSync(dest)) {
-                    fs.mkdirSync(dest, { recursive: true });
-                }
-                
-                const items = fs.readdirSync(src);
-                items.forEach(item => {
-                    const srcPath = path.join(src, item);
-                    const destPath = path.join(dest, item);
-                    
-                    if (fs.statSync(srcPath).isDirectory()) {
-                        copyFolderSync(srcPath, destPath);
-                    } else {
-                        fs.copyFileSync(srcPath, destPath);
-                    }
-                });
-            }
-            
-            copyFolderSync(sourceSubfolder, destSubfolder);
         });
-        
-        // Copy parameters.inc from central template location to each subfolder
-        const centralParametersPath = path.join(__dirname, 'templates', 'inc', 'parameters.inc');
-        if (fs.existsSync(centralParametersPath)) {
-            subfolders.forEach(subfolder => {
-                const destParametersPath = path.join(projectPath, subfolder, 'parameters.inc');
-                fs.copyFileSync(centralParametersPath, destParametersPath);
-            });
-        }
-        
-        // Copy mesh file to all P_L folders if it exists
-        const tempDir = path.join(__dirname, 'temp');
-        if (fs.existsSync(tempDir)) {
-            const meshFiles = fs.readdirSync(tempDir).filter(file => file.endsWith('.inp'));
-            if (meshFiles.length > 0) {
-                const meshFile = meshFiles[0]; // Use the first mesh file found
-                const sourceMeshPath = path.join(tempDir, meshFile);
-                
-                subfolders.forEach(subfolder => {
-                    const destMeshPath = path.join(projectPath, subfolder, meshFile);
-                    try {
-                        fs.copyFileSync(sourceMeshPath, destMeshPath);
-                    } catch (copyErr) {
-                        console.error(`Error copying mesh file to ${subfolder}:`, copyErr);
-                    }
-                });
-                  // Clean up temporary mesh file
-                try {
-                    fs.unlinkSync(sourceMeshPath);
-                } catch (cleanupErr) {
-                    console.error('Error cleaning up temporary mesh file:', cleanupErr);
-                }
-            }
-            
-            // Clean up the entire temp directory after mesh file copying is done
-            try {
-                if (fs.existsSync(tempDir)) {
-                    fs.rmSync(tempDir, { recursive: true, force: true });
-                }
-            } catch (cleanupErr) {
-                console.error('Error cleaning up temp directory:', cleanupErr);
-            }
-        }
-        
-        // Clean up parameters.inc from templates/inc/ after copying to all P_L folders
-        try {
-            if (fs.existsSync(centralParametersPath)) {
-                fs.unlinkSync(centralParametersPath);
-            }
-        } catch (cleanupErr) {
-            console.error('Error cleaning up central parameters.inc file:', cleanupErr);
-        }
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             message: 'Protocol folders created successfully',
             foldersCreated: subfolders,
             projectPath: combinedFolderName
         });
-        
+
     } catch (err) {
         console.error('Error creating protocol folders:', err);
         res.status(500).json({
@@ -1290,14 +1242,14 @@ app.post('/api/create-protocol-folders', (req, res) => {
 // Add new endpoint for getting row data with p, l, job, old_job
 app.get('/api/get-row-data', (req, res) => {
     const { protocol, runNumber } = req.query;
-    
+
     if (!protocol || !runNumber) {
         return res.status(400).json({
             success: false,
             message: 'Protocol and run number are required'
         });
     }
-    
+
     // Map protocol to table name
     const tableMap = {
         'mf62': 'mf_data',
@@ -1306,7 +1258,7 @@ app.get('/api/get-row-data', (req, res) => {
         'cdtire': 'cdtire_data',
         'custom': 'custom_data'
     };
-    
+
     const tableName = tableMap[protocol.toLowerCase()];
     if (!tableName) {
         return res.status(400).json({
@@ -1314,9 +1266,9 @@ app.get('/api/get-row-data', (req, res) => {
             message: 'Invalid protocol'
         });
     }
-    
+
     const query = `SELECT p, l, job, old_job FROM ${tableName} WHERE number_of_runs = $1`;
-    
+
     db.query(query, [runNumber], (err, results) => {
         if (err) {
             console.error('Error fetching row data:', err);
@@ -1325,14 +1277,14 @@ app.get('/api/get-row-data', (req, res) => {
                 message: 'Error fetching row data'
             });
         }
-        
+
         if (results.rows.length === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Row not found'
             });
         }
-        
+
         res.json({
             success: true,
             data: results.rows[0]
@@ -1343,18 +1295,18 @@ app.get('/api/get-row-data', (req, res) => {
 // Add new endpoint for checking ODB file existence
 app.get('/api/check-odb-file', (req, res) => {
     const { projectName, protocol, folderName, jobName } = req.query;
-    
+
     if (!projectName || !protocol || !folderName || !jobName) {
         return res.status(400).json({
             success: false,
             message: 'All parameters are required'
         });
     }
-      const combinedFolderName = `${projectName}_${protocol}`;
+    const combinedFolderName = `${projectName}_${protocol}`;
     const odbPath = path.join(__dirname, 'projects', combinedFolderName, folderName, `${jobName}.odb`);
-    
+
     const exists = fs.existsSync(odbPath);
-    
+
     res.json({
         success: true,
         exists: exists,
@@ -1365,14 +1317,14 @@ app.get('/api/check-odb-file', (req, res) => {
 // Add new endpoint for job dependency resolution
 app.post('/api/resolve-job-dependencies', (req, res) => {
     const { projectName, protocol, runNumber } = req.body;
-    
+
     if (!projectName || !protocol || !runNumber) {
         return res.status(400).json({
             success: false,
             message: 'Project name, protocol, and run number are required'
         });
     }
-    
+
     // Map protocol to table name
     const tableMap = {
         'mf62': 'mf_data',
@@ -1381,7 +1333,7 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
         'cdtire': 'cdtire_data',
         'custom': 'custom_data'
     };
-    
+
     const tableName = tableMap[protocol.toLowerCase()];
     if (!tableName) {
         return res.status(400).json({
@@ -1389,7 +1341,7 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
             message: 'Invalid protocol'
         });
     }
-      const combinedFolderName = `${projectName}_${protocol}`;
+    const combinedFolderName = `${projectName}_${protocol}`;
     const projectPath = path.join(__dirname, 'projects', combinedFolderName);    // Function to recursively resolve job dependencies with enhanced backtracking
     async function resolveDependencies(jobName, visitedJobs = new Set(), callerContext = null) {
         try {
@@ -1399,13 +1351,13 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
                 return { success: true, message: `Circular dependency avoided for ${jobName}` };
             }
             visitedJobs.add(jobName);
-            
+
             console.log(`\n=== Resolving dependencies for job: ${jobName} ===`);
-              
+
             // Strict folder containment: Only look for jobs in the current P_L folder
             let jobData = null;
             let actualJobName = jobName;
-            
+
             // Look for the job in caller's context (P_L folder) - and ONLY in this folder
             if (callerContext) {
                 console.log(`Searching for job "${jobName}" in folder ${callerContext.p}_${callerContext.l}...`);
@@ -1415,15 +1367,15 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
                     console.log(`✓ Found "${actualJobName}" in folder ${callerContext.p}_${callerContext.l}`);
                 }
             }
-            
+
             // If not found in folder, throw error - we never search globally
             if (!jobData) {
                 throw new Error(`Job "${jobName}" not found in folder ${callerContext ? callerContext.p + '_' + callerContext.l : 'unknown'}. Dependencies must exist within the same P_L folder.`);
             }
-            
+
             const folderName = `${jobData.p}_${jobData.l}`;
             const folderPath = path.join(projectPath, folderName);
-            
+
             // Check if current job's ODB already exists
             const odbJobName = actualJobName.endsWith('.inp') ? actualJobName.replace('.inp', '') : actualJobName;
             const odbPath = path.join(folderPath, `${odbJobName}.odb`);
@@ -1431,11 +1383,11 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
                 console.log(`✓ ODB already exists for job: ${odbJobName} in ${folderName}`);
                 return { success: true, message: `Job ${odbJobName} already completed` };
             }
-            
+
             // Step 3: Recursively resolve dependencies (old_job)
             if (jobData.old_job && jobData.old_job !== '-') {
                 console.log(`Step 3: Resolving dependency "${jobData.old_job}" for job "${actualJobName}"`);
-                
+
                 // Recursively resolve the dependency first (backtracking approach)
                 const dependencyResult = await resolveDependencies(jobData.old_job, visitedJobs, { p: jobData.p, l: jobData.l });
                 if (!dependencyResult.success) {
@@ -1444,29 +1396,29 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
             } else {
                 console.log(`Step 3: No dependencies for job "${actualJobName}" (old_job: ${jobData.old_job})`);
             }
-            
+
             // Step 4: Execute current job after all dependencies are resolved
             console.log(`Step 4: Executing job "${odbJobName}" in folder ${folderName}...`);
-            const executeResult = await executeAbaqusJob(folderPath, odbJobName, jobData.old_job, folderName);
+            const executeResult = await executeAbaqusJob(folderPath, odbJobName, jobData.old_job);
             if (!executeResult.success) {
-                throw new Error(`Failed to execute job ${odbJobName} in folder ${folderName}: ${executeResult.message}`);
+                throw new Error(`Failed to execute job ${odbJobName}: ${executeResult.message}`);
             }
-            
-            console.log(`✓ Successfully executed job "${odbJobName}" in folder ${folderName}`);
+
+            console.log(`✓ Successfully executed job "${odbJobName}"`);
             return { success: true, message: `Job ${odbJobName} executed successfully` };
-            
+
         } catch (error) {
             console.error(`Error resolving dependencies for ${jobName}:`, error);
             throw error;
         }
     }
-      // Helper function to find job in specific folder
+    // Helper function to find job in specific folder
     async function findJobInFolder(jobName, p, l) {
         const searchNames = [
             jobName,
             jobName.endsWith('.inp') ? jobName.replace('.inp', '') : jobName + '.inp'
         ];
-        
+
         for (const searchName of searchNames) {
             const query = `SELECT p, l, job, old_job FROM ${tableName} WHERE job = $1 AND p = $2 AND l = $3`;
             const result = await db.query(query, [searchName, p, l]);
@@ -1476,105 +1428,105 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
         }
         return null;
     }// Function to execute Abaqus job with enhanced dependency handling
-    function executeAbaqusJob(folderPath, jobName, oldJobName, folderName = '') {
+    function executeAbaqusJob(folderPath, jobName, oldJobName) {
         return new Promise((resolve) => {
             try {
                 // Ensure job names are clean (without .inp for command execution)
                 const cleanJobName = jobName.endsWith('.inp') ? jobName.replace('.inp', '') : jobName;
-                
+
                 let command;
                 // Handle cases where old_job exists vs doesn't exist
                 if (oldJobName && oldJobName !== '-') {
                     const cleanOldJobName = oldJobName.endsWith('.inp') ? oldJobName.replace('.inp', '') : oldJobName;
                     command = `abaqus job=${cleanJobName} oldjob=${cleanOldJobName} input=${cleanJobName}.inp`;
-                    console.log(`Executing with dependency in ${folderName}: ${command}`);
+                    console.log(`Executing with dependency: ${command}`);
                 } else {
                     command = `abaqus job=${cleanJobName} input=${cleanJobName}.inp`;
-                    console.log(`Executing without dependency in ${folderName}: ${command}`);
+                    console.log(`Executing without dependency: ${command}`);
                 }
-                
+
                 console.log(`Working directory: ${folderPath}`);
-                
+
                 const abaqusProcess = spawn('cmd', ['/c', command], {
                     cwd: folderPath,
                     shell: true
                 });
-                
+
                 let output = '';
                 let errorOutput = '';
-                
+
                 abaqusProcess.stdout.on('data', (data) => {
                     output += data.toString();
                 });
-                
+
                 abaqusProcess.stderr.on('data', (data) => {
                     errorOutput += data.toString();
                 });
-                
+
                 abaqusProcess.on('close', (code) => {
-                    console.log(`Process finished with exit code: ${code} for job ${cleanJobName} in ${folderName}`);
+                    console.log(`Process finished with exit code: ${code}`);
                     if (code === 0) {
                         resolve({ success: true, output: output });
                     } else {
-                        resolve({ 
-                            success: false, 
-                            message: `Process exited with code ${code} in folder ${folderName}`,
+                        resolve({
+                            success: false,
+                            message: `Process exited with code ${code}`,
                             error: errorOutput,
                             output: output
                         });
                     }
                 });
-                
+
                 abaqusProcess.on('error', (error) => {
-                    console.error(`Process spawn error in ${folderName}: ${error.message}`);
-                    resolve({ 
-                        success: false, 
-                        message: `Failed to start process in ${folderName}: ${error.message}` 
+                    console.error(`Process spawn error: ${error.message}`);
+                    resolve({
+                        success: false,
+                        message: `Failed to start process: ${error.message}`
                     });
                 });
-                
+
             } catch (error) {
-                console.error(`Function execution error in ${folderName}: ${error.message}`);
-                resolve({ 
-                    success: false, 
-                    message: `Error executing job in ${folderName}: ${error.message}` 
+                console.error(`Function execution error: ${error.message}`);
+                resolve({
+                    success: false,
+                    message: `Error executing job: ${error.message}`
                 });
             }
         });
     }
-    
+
     // Start the dependency resolution process
     (async () => {
         try {
             // Get the initial job data
             const query = `SELECT p, l, job, old_job FROM ${tableName} WHERE number_of_runs = $1`;
             const result = await db.query(query, [runNumber]);
-            
+
             if (result.rows.length === 0) {
                 return res.status(404).json({
                     success: false,
                     message: 'Row not found'
                 });
             }
-            
+
             const rowData = result.rows[0];
-            
+
             if (!fs.existsSync(projectPath)) {
                 return res.status(404).json({
                     success: false,
                     message: 'Project folder not found'
                 });
             }
-              console.log(`Starting dependency resolution for job: ${rowData.job} in context P${rowData.p}_L${rowData.l}`);
+            console.log(`Starting dependency resolution for job: ${rowData.job} in context P${rowData.p}_L${rowData.l}`);
             // Pass the initial job's context to help with dependency resolution
             const initialContext = { p: rowData.p, l: rowData.l };
             await resolveDependencies(rowData.job, new Set(), initialContext);
-            
+
             res.json({
                 success: true,
                 message: `Job ${rowData.job} and all dependencies executed successfully`
             });
-            
+
         } catch (error) {
             console.error('Error in dependency resolution:', error);
             res.status(500).json({
@@ -1588,25 +1540,25 @@ app.post('/api/resolve-job-dependencies', (req, res) => {
 // Add endpoint for checking job completion status more comprehensively
 app.get('/api/check-job-status', (req, res) => {
     const { projectName, protocol, folderName, jobName } = req.query;
-    
+
     if (!projectName || !protocol || !folderName || !jobName) {
         return res.status(400).json({
             success: false,
             message: 'All parameters are required'
         });
     }
-      const combinedFolderName = `${projectName}_${protocol}`;
+    const combinedFolderName = `${projectName}_${protocol}`;
     const jobPath = path.join(__dirname, 'projects', combinedFolderName, folderName);
-    
+
     try {
         // Check for various file types to determine job status
         const odbFile = path.join(jobPath, `${jobName}.odb`);
         const staFile = path.join(jobPath, `${jobName}.sta`);
         const msgFile = path.join(jobPath, `${jobName}.msg`);
-        
+
         let status = 'not_started';
         let message = '';
-        
+
         if (fs.existsSync(odbFile)) {
             status = 'completed';
             message = 'Job completed successfully - ODB file exists';
@@ -1632,7 +1584,7 @@ app.get('/api/check-job-status', (req, res) => {
             status = 'running';
             message = 'Job started - message file exists';
         }
-        
+
         res.json({
             success: true,
             status: status,
@@ -1643,7 +1595,7 @@ app.get('/api/check-job-status', (req, res) => {
                 msg: fs.existsSync(msgFile)
             }
         });
-        
+
     } catch (err) {
         console.error('Error checking job status:', err);
         res.status(500).json({
@@ -1653,27 +1605,148 @@ app.get('/api/check-job-status', (req, res) => {
     }
 });
 
-// Serve the main application
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+// Add this endpoint to handle project saving
+app.post('/api/save-project', async (req, res) => {
+    try {
+        const { project_name, region, department, tyre_size, protocol, status } = req.body;
+
+        // Modified query to use PostgreSQL parameter style ($1, $2, etc.)
+        const query = `
+            INSERT INTO projects 
+            (project_name, region, department, tyre_size, protocol, status, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+        `;
+
+        await db.query(query, [
+            project_name,
+            region,
+            department,
+            tyre_size,
+            protocol,
+            status
+        ]);
+
+        res.json({ success: true, message: 'Project saved successfully' });
+    } catch (error) {
+        console.error('Error saving project:', error);
+        res.status(500).json({ success: false, message: 'Failed to save project' });
+    }
 });
 
-// Start the server
-const port = process.env.PORT || 3000;
+// Add this endpoint to handle project history
+app.get('/api/project-history', async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                project_name, 
+                region, 
+                department, 
+                tyre_size, 
+                protocol, 
+                created_at, 
+                status,
+                completed_at
+            FROM projects 
+            ORDER BY created_at DESC
+        `;
 
-const startServer = (attemptPort) => {
-    app.listen(attemptPort)
-        .on('error', (err) => {
-            if (err.code === 'EADDRINUSE') {
-                console.log(`Port ${attemptPort} is busy, trying ${attemptPort + 1}...`);
-                startServer(attemptPort + 1);
-            } else {
-                console.error('Server error:', err);
-            }
-        })
-        .on('listening', () => {
-            console.log(`Server running on port ${attemptPort}`);
+        const result = await db.query(query);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Database error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch project history'
         });
-};
+    }
+});
 
-startServer(port);
+// Add this with your other endpoints
+app.post('/api/mark-project-complete', async (req, res) => {
+    try {
+        const { project_name } = req.body;
+
+        // First, check if project exists
+        const checkQuery = 'SELECT * FROM projects WHERE project_name = $1';
+        const checkResult = await db.query(checkQuery, [project_name]);
+
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Project not found'
+            });
+        }
+
+        // Update project status and completion time
+        const updateQuery = `
+            UPDATE projects 
+            SET status = 'Completed', 
+                completed_at = CURRENT_TIMESTAMP 
+            WHERE project_name = $1
+            RETURNING completed_at
+        `;
+
+        const result = await db.query(updateQuery, [project_name]);
+
+        if (result.rows.length > 0) {
+            res.json({
+                success: true,
+                message: 'Project marked as completed',
+                completed_at: result.rows[0].completed_at
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to update project status'
+            });
+        }
+    } catch (error) {
+        console.error('Error marking project as complete:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to mark project as complete'
+        });
+    }
+});
+
+app.get('/api/manager/users', authenticateToken, requireManager, async (req, res) => {
+    try {
+        // Only get users with role 'engineer'
+        const usersResult = await db.query(
+            "SELECT id, email, role, created_at FROM users WHERE role = 'engineer'"
+        );
+        res.json({ success: true, users: usersResult.rows });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to fetch users' });
+    }
+});
+// Notifications endpoint
+app.get('/api/manager/notifications', authenticateToken, requireManager, (req, res) => {
+    // Example: send dummy notifications
+    res.json({ success: true, notifications: [
+        "New engineer registered: john@apollotyres.com",
+        "Simulation failed for admin@apollotyres.com"
+    ]});
+});
+
+// Recent activity endpoint
+app.get('/api/manager/recent-activity', authenticateToken, requireManager, (req, res) => {
+    // Example: send dummy activities
+    res.json({ success: true, activities: [
+        "admin@apollotyres.com ran a simulation (Project #74)",
+        "john@apollotyres.com registered",
+        "admin@apollotyres.com completed a project"
+    ]});
+});
+
+// Password update endpoint
+app.post('/api/manager/update-password', authenticateToken, requireManager, async (req, res) => {
+    const { newPassword } = req.body;
+    if (!newPassword) return res.json({ success: false, message: "Password required" });
+    // Hash password in production!
+    await db.query("UPDATE users SET password = $1 WHERE email = $2", [newPassword, req.user.email]);
+    res.json({ success: true });
+});
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});

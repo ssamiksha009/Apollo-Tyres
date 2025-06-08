@@ -17,7 +17,8 @@ body {
 
 /* Header styling */
 .main-header {
-    background-color: #582C7C; /* Purple color for Apollo Tyres */
+    background-color: #582C7C;
+    /* Purple color for Apollo Tyres */
     height: 80px;
     width: 100%;
     display: flex;
@@ -153,8 +154,39 @@ footer {
     .header-title {
         font-size: 24px;
     }
-    
+
     .login-container {
         padding: 25px;
     }
+}
+
+/* Add these styles to your existing login.css file */
+
+.register-link {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.register-link a {
+    color: #582C7C;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.register-link a:hover {
+    text-decoration: underline;
+}
+
+select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    transition: border 0.3s;
+}
+
+select:focus {
+    outline: none;
+    border-color: #582C7C;
 }

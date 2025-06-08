@@ -1,46 +1,239 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
+    <title>Login | Tyre Virtualization Tool</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Apollo Tyres R&D</title>
-    <link rel="stylesheet" href="/css/login.css">
-</head>
-<body>
-    <header class="main-header">
-        <!-- Apollo Tyres logo -->
-        <div class="logo-container">
-            <img src="/images/Apollo-Tyres-Logo.png" alt="Apollo Tyres Logo" class="logo">
-        </div>
-        
-        <!-- Adding the heading -->
-        <h1 class="header-title">Tyre Virtualization Tool</h1>
-    </header>
-    
-    <main>
-        <div class="login-container">
-            <h2>Login</h2>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
-                </div>
-                <div class="form-btn-group">
-                    <button type="submit" id="loginBtn" class="login-button">Login</button>
-                </div>
-                <div id="errorMessage" class="error-message"></div>
-            </form>
-        </div>
-    </main>
-    
-    <footer>
-        <!-- Footer content will go here -->
-    </footer>
+    <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
 
-    <script src="/js/login.js"></script>
+        body {
+            min-height: 100vh;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        .header {
+            width: 100%;
+            background: linear-gradient(90deg, #4B2994 60%, #fa893e 100%);
+            color: #fff;
+            padding: 18px 0 18px 0;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 24px rgba(44, 25, 124, 0.10);
+            justify-content: center;
+            position: relative;
+        }
+
+        .header-logo {
+            height: 48px;
+            margin-left: 0;
+            margin-right: 18px;
+            position: absolute;
+            left: 32px;
+        }
+
+        .header-title {
+            font-family: 'Montserrat', 'Segoe UI Semibold', 'Segoe UI', Arial, sans-serif;
+            font-size: 2.1rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 8px rgba(44, 25, 124, 0.10);
+            color: #fff;
+            margin: 0 auto;
+            text-align: center;
+            width: 100%;
+            display: block;
+        }
+
+        .login-main {
+            width: 100%;
+            max-width: 400px;
+            margin: 48px auto 0 auto;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 8px 40px rgba(44, 25, 124, 0.10);
+            padding: 40px 32px 32px 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .apollo-logo {
+            margin-bottom: 18px;
+        }
+
+        .apollo-logo img {
+            height: 60px;
+            width: auto;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .tool-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #4B2994;
+            margin-bottom: 32px;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .login-form {
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .login-form label {
+            display: block;
+            margin-bottom: 6px;
+            color: #4B2994;
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+
+        .login-form input[type="email"],
+        .login-form input[type="password"] {
+            width: 100%;
+            padding: 12px 10px;
+            margin-bottom: 18px;
+            border: 1.5px solid #ede9fe;
+            border-radius: 8px;
+            font-size: 1.08rem;
+            background: #f8fafc;
+            transition: border 0.2s;
+        }
+
+        .login-form input[type="email"]:focus,
+        .login-form input[type="password"]:focus {
+            border: 1.5px solid #4B2994;
+            outline: none;
+        }
+
+        .login-form button[type="submit"] {
+            width: 100%;
+            background: #4B2994;
+            color: #fff;
+            border: none;
+            padding: 12px 0;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 16px;
+            transition: background 0.2s;
+        }
+
+        .login-form button[type="submit"]:hover {
+            background: #6c3fc5;
+        }
+
+        .login-form .signup-link {
+            display: block;
+            text-align: center;
+            margin-top: 10px;
+            color: #4B2994;
+            font-size: 0.98rem;
+            text-decoration: none;
+        }
+
+        .login-form .signup-link:hover {
+            text-decoration: underline;
+        }
+
+        .login-form .error-message {
+            color: #e53935;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            .login-main {
+                padding: 24px 8px 24px 8px;
+            }
+
+            .header-title {
+                font-size: 1.2rem;
+            }
+
+            .header-logo {
+                height: 32px;
+                left: 10px;
+                margin-right: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <img src="/images/Apollo-Tyres-Logo.png" alt="Apollo Tyres Logo" class="header-logo">
+        <span class="header-title">Tyre Virtualization Tool</span>
+    </div>
+    <div class="login-main">
+        <div class="apollo-logo">
+            <img src="/images/new-logo.jpeg" alt="Apollo Tyres Logo">
+        </div>
+        <form class="login-form" id="loginForm" autocomplete="off">
+            <div class="error-message" id="errorMessage"></div>
+            <label for="email">Email address</label>
+            <input type="email" id="email" name="email" required autocomplete="username">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required autocomplete="current-password">
+            <button type="submit">Sign in</button>
+            <a class="signup-link" href="/register.html">Don't have an account? <b>Sign up</b></a>
+        </form>
+    </div>
+    <script>
+        document.getElementById('loginForm').onsubmit = async function (e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = "";
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (!data.success || !data.token) {
+                    errorMessage.textContent = data.message || "Invalid credentials";
+                    return;
+                }
+                // Save token
+                localStorage.setItem('authToken', data.token);
+
+                // Decode JWT to get role
+                const payload = JSON.parse(atob(data.token.split('.')[1]));
+                if (payload.role === 'manager') {
+                    window.location.href = '/manager-dashboard.html';
+                } else {
+                    window.location.href = '/index.html';
+                }
+            } catch (err) {
+                errorMessage.textContent = "Login failed. Please try again.";
+            }
+        };
+
+        // Redirect to register.html on sign up link click
+        document.querySelector('.signup-link').onclick = function (e) {
+            e.preventDefault();
+            window.location.href = '/register.html';
+        };
+    </script>
 </body>
+
 </html>

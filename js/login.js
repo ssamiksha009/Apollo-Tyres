@@ -43,9 +43,14 @@ document.getElementById('loginForm').addEventListener('submit', function(event) 
         if (data.success) {
             // Store authentication token in localStorage
             localStorage.setItem('authToken', data.token);
-            
-            // Redirect to the main page upon successful login
-            window.location.href = 'index.html';
+
+            // Decode JWT to get the role
+            const payload = JSON.parse(atob(data.token.split('.')[1]));
+            if (payload.role === 'manager') {
+                window.location.href = 'manager-dashboard.html';
+            } else {
+                window.location.href = 'index.html';
+            }
         } else {
             // Display error message
             errorMessage.textContent = data.message || 'Invalid email or password';

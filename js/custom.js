@@ -1,6 +1,68 @@
-// Add at the beginning of the file
-document.getElementById('logoutBtn').addEventListener('click', function() {
-    window.location.href = '/login.html';
+document.addEventListener('DOMContentLoaded', function () {
+    // Add event listeners after DOM is loaded
+    document.getElementById('logoutBtn')?.addEventListener('click', function () {
+        window.location.href = '/login.html';
+    });
+
+    document.getElementById('homeBtn')?.addEventListener('click', function () {
+        window.location.href = '/index.html';
+    });
+
+    // Call updateTestSummary when page loads
+    updateTestSummary();
+
+    // Submit button handling
+    document.getElementById('submitBtn')?.addEventListener('click', function () {
+        const errorMessage = document.getElementById('errorMessage');
+        errorMessage.textContent = '';
+
+        // Check if all inputs are filled and valid
+        const inputs = document.querySelectorAll('input[required]');
+        let allValid = true;
+
+        inputs.forEach(input => {
+            if (!input.value || !input.checkValidity()) {
+                allValid = false;
+                input.classList.add('invalid');
+            } else {
+                input.classList.remove('invalid');
+            }
+        });
+
+        if (!allValid) {
+            errorMessage.textContent = '* All fields are mandatory and must be positive numbers';
+            errorMessage.style.display = 'block';
+            return;
+        }
+
+        // Handle mesh file upload if provided
+        const meshFile = document.getElementById('meshFile')?.files[0];
+        if (meshFile) {
+            const formData = new FormData();
+            formData.append('meshFile', meshFile);
+
+            // Upload the mesh file
+            fetch('/api/upload-mesh-file', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.message || 'Failed to upload mesh file');
+                    }
+                    // Continue with Excel processing after successful mesh file upload
+                    processCustomExcel();
+                })
+                .catch(error => {
+                    errorMessage.style.color = '#d9534f';
+                    errorMessage.textContent = error.message || 'Error uploading mesh file. Please try again.';
+                });
+        } else {
+            // Proceed without mesh file upload
+            processCustomExcel();
+        }
+    });
 });
 
 function updateTestSummary() {
@@ -12,7 +74,7 @@ function updateTestSummary() {
                 summaryContainer.innerHTML = '<div class="summary-item">No tests available</div>';
                 return;
             }
-            
+
             summaryContainer.innerHTML = data.map(item => `
                 <div class="summary-item">
                     <span class="test-name">${item.tests || 'Unknown'}:</span>
@@ -30,54 +92,21 @@ function updateTestSummary() {
 // Call when page loads
 window.addEventListener('load', updateTestSummary);
 
-// Submit button handling
-document.getElementById('submitBtn').addEventListener('click', function() {
-    const errorMessage = document.getElementById('errorMessage');
-    errorMessage.textContent = '';
-    
-    // Check for mesh file and upload if present
-    const meshFile = document.getElementById('meshFile').files[0];
-    if (meshFile) {
-        const meshFormData = new FormData();
-        meshFormData.append('meshFile', meshFile);
-        
-        fetch('/api/upload-mesh-file', {
-            method: 'POST',
-            body: meshFormData
-        })
-        .then(response => response.json())
-        .then(meshData => {
-            if (!meshData.success) {
-                throw new Error(meshData.message || 'Failed to upload mesh file');
-            }
-            // Continue with Excel processing
-            processCustomExcel();
-        })
-        .catch(error => {
-            errorMessage.style.color = '#d9534f';
-            errorMessage.textContent = error.message || 'Error uploading mesh file. Please try again.';
-        });
-    } else {
-        // No mesh file, proceed directly with Excel processing
-        processCustomExcel();
-    }
-});
-
 // Extract Excel processing to a separate function
 function processCustomExcel() {
     const errorMessage = document.getElementById('errorMessage');
-    
+
     // Continue with Excel processing
     fetch('/api/read-protocol-excel')
         .then(response => response.arrayBuffer())
         .then(data => {
-            const workbook = XLSX.read(new Uint8Array(data), {type: 'array'});
+            const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
             const outputWorkbook = XLSX.utils.book_new();
-            
+
             workbook.SheetNames.forEach((sheetName) => {
                 const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-                
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
                 // Replace values in the sheet
                 const replacements = {
                     'P1': document.getElementById('p1').value.trim() || null,
@@ -99,21 +128,21 @@ function processCustomExcel() {
                 // Create a new sheet while preserving all original data and adding original P/L values
                 const newSheet = jsonData.map((row, rowIndex) => {
                     if (!Array.isArray(row)) return row;
-                    
+
                     // Store original P and L values for this row
                     const originalPValues = [];
                     const originalLValues = [];
-                    
+
                     const modifiedRow = row.map((cell, columnIndex) => {
                         if (cell === null || cell === undefined) return cell;
-                        
+
                         const cellStr = String(cell).trim();
-                        
+
                         // Store original P values before replacement
                         if (cellStr.match(/^P[1-3]$/) || cellStr.toLowerCase() === 'ipref') {
                             originalPValues.push(cellStr);
                         }
-                        
+
                         // Store original L values before replacement
                         if (cellStr.match(/^L[1-5]$/)) {
                             originalLValues.push(cellStr);
@@ -157,14 +186,14 @@ function processCustomExcel() {
                         if (replacements.hasOwnProperty(cellStr) && replacements[cellStr] !== null) {
                             return replacements[cellStr];
                         }
-                        
+
                         // Return original value for all other cells
                         return cell;
                     });
-                    
+
                     // Add original P and L values as new columns at the end
                     const extendedRow = [...modifiedRow];
-                    
+
                     // Add header for first row
                     if (rowIndex === 0) {
                         extendedRow.push('Original P Values', 'Original L Values');
@@ -174,20 +203,20 @@ function processCustomExcel() {
                             originalLValues.join(', ')
                         );
                     }
-                    
+
                     return extendedRow;
                 });
 
                 // Convert the modified data back to a worksheet
                 const modifiedWorksheet = XLSX.utils.aoa_to_sheet(newSheet);
-                
+
                 // Add the modified sheet to the output workbook
                 XLSX.utils.book_append_sheet(outputWorkbook, modifiedWorksheet, sheetName);
             });
 
             // Instead of downloading, send to server
             const excelBuffer = XLSX.write(outputWorkbook, { bookType: 'xlsx', type: 'array' });
-            
+
             // Create form data to send
             const formData = new FormData();
             formData.append('excelFile', new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'output.xlsx');
@@ -208,20 +237,20 @@ function processCustomExcel() {
             return fetch('/api/read-output-excel')
                 .then(response => response.arrayBuffer())
                 .then(data => {
-                    const workbook = XLSX.read(new Uint8Array(data), {type: 'array'});
+                    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
                     const extractedData = [];
 
                     workbook.SheetNames.forEach((sheetName) => {
                         const worksheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-                        
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
                         // Find the header row
-                        let headerRowIndex = jsonData.findIndex(row => 
+                        let headerRowIndex = jsonData.findIndex(row =>
                             row && row.includes('Number Of Tests'));
-                        
+
                         if (headerRowIndex === -1) return;
-                        
-                        const headerRow = jsonData[headerRowIndex];                        const columns = {
+
+                        const headerRow = jsonData[headerRowIndex]; const columns = {
                             runs: headerRow.indexOf('Number Of Tests'),
                             tests: headerRow.indexOf('Tests'),
                             ips: headerRow.indexOf('Inflation Pressure [PSI]'),
@@ -243,7 +272,7 @@ function processCustomExcel() {
                         // Extract data rows
                         for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
                             const row = jsonData[i];
-                            if (!row || !row[columns.runs]) continue;                            extractedData.push({
+                            if (!row || !row[columns.runs]) continue; extractedData.push({
                                 number_of_runs: parseInt(row[columns.runs]),
                                 tests: row[columns.tests]?.toString() || '',
                                 inflation_pressure: row[columns.ips]?.toString() || '',
@@ -314,7 +343,7 @@ function processCustomExcel() {
             if (!data.success) {
                 throw new Error(data.message || 'Error generating parameter file');
             }
-            
+
             const projectName = sessionStorage.getItem('currentProject') || 'DefaultProject';
             return fetch('/api/create-protocol-folders', {
                 method: 'POST',

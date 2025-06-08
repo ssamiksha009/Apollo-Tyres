@@ -16,7 +16,8 @@ body {
 
 /* Header styling */
 .main-header {
-    background-color: #582C7C; /* Purple color for Apollo Tyres */
+    background-color: #582C7C;
+    /* Purple color for Apollo Tyres */
     height: 80px;
     width: 100%;
     display: flex;
@@ -46,7 +47,8 @@ body {
     left: 50%;
     transform: translateX(-50%);
     color: white;
-    font-size: 35px; /* Increased from 24px to 35px */
+    font-size: 35px;
+    /* Increased from 24px to 35px */
     white-space: nowrap;
 }
 
@@ -109,7 +111,8 @@ main {
 /* Submit button styling */
 .submit-button {
     padding: 12px 40px;
-    background-color: #2E8B57; /* Green color */
+    background-color: #2E8B57;
+    /* Green color */
     color: white;
     border: none;
     border-radius: 4px;
@@ -120,7 +123,8 @@ main {
 }
 
 .submit-button:hover {
-    background-color: #216e43; /* Darker green on hover */
+    background-color: #216e43;
+    /* Darker green on hover */
 }
 
 /* Error message styling */
@@ -169,4 +173,37 @@ footer {
 
 .logout-button:hover {
     background-color: #c9302c;
+}
+
+/* Add after your existing button styles */
+
+.button-container {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 10px;
+}
+
+.home-button {
+    padding: 8px 15px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.home-button:hover {
+    background-color: #218838;
+}
+
+.home-button i {
+    font-size: 16px;
 }

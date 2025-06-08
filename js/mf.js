@@ -1,6 +1,68 @@
-// Add at the beginning of the file
-document.getElementById('logoutBtn').addEventListener('click', function() {
-    window.location.href = '/login.html';
+document.addEventListener('DOMContentLoaded', function () {
+    // Add event listeners after DOM is loaded
+    document.getElementById('logoutBtn')?.addEventListener('click', function () {
+        window.location.href = '/login.html';
+    });
+
+    document.getElementById('homeBtn')?.addEventListener('click', function () {
+        window.location.href = '/index.html';
+    });
+
+    // Call updateTestSummary when page loads
+    updateTestSummary();
+
+    // Submit button handling
+    document.getElementById('submitBtn')?.addEventListener('click', function () {
+        const errorMessage = document.getElementById('errorMessage');
+        errorMessage.textContent = '';
+
+        // Check if all inputs are filled and valid
+        const inputs = document.querySelectorAll('input[required]');
+        let allValid = true;
+
+        inputs.forEach(input => {
+            if (!input.value || !input.checkValidity()) {
+                allValid = false;
+                input.classList.add('invalid');
+            } else {
+                input.classList.remove('invalid');
+            }
+        });
+
+        if (!allValid) {
+            errorMessage.textContent = '* All fields are mandatory and must be positive numbers';
+            errorMessage.style.display = 'block';
+            return;
+        }
+
+        // Handle mesh file upload if provided
+        const meshFile = document.getElementById('meshFile').files[0];
+        if (meshFile) {
+            const formData = new FormData();
+            formData.append('meshFile', meshFile);
+
+            // Upload the mesh file
+            fetch('/api/upload-mesh-file', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        throw new Error(data.message || 'Failed to upload mesh file');
+                    }
+                    // Continue with Excel processing after successful mesh file upload
+                    processMFExcel();
+                })
+                .catch(error => {
+                    errorMessage.style.color = '#d9534f';
+                    errorMessage.textContent = error.message || 'Error uploading mesh file. Please try again.';
+                });
+        } else {
+            // Proceed without mesh file upload
+            processMFExcel();
+        }
+    });
 });
 
 function updateTestSummary() {
@@ -18,77 +80,21 @@ function updateTestSummary() {
         .catch(error => console.error('Error fetching test summary:', error));
 }
 
-// Call when page loads
-window.addEventListener('load', updateTestSummary);
-
-// Submit button handling
-document.getElementById('submitBtn').addEventListener('click', function() {
-    const errorMessage = document.getElementById('errorMessage');
-    errorMessage.textContent = '';
-    
-    // Check if all inputs are filled and valid
-    const inputs = document.querySelectorAll('input[required]');
-    let allValid = true;
-    
-    inputs.forEach(input => {
-        if (!input.value || !input.checkValidity()) {
-            allValid = false;
-            input.classList.add('invalid');
-        } else {
-            input.classList.remove('invalid');
-        }
-    });
-
-    if (!allValid) {
-        errorMessage.textContent = '* All fields are mandatory and must be positive numbers';
-        errorMessage.style.display = 'block';
-        return;
-    }
-    
-    // Handle mesh file upload if provided
-    const meshFile = document.getElementById('meshFile').files[0];
-    if (meshFile) {
-        const formData = new FormData();
-        formData.append('meshFile', meshFile);
-        
-        // Upload the mesh file
-        fetch('/api/upload-mesh-file', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (!data.success) {
-                throw new Error(data.message || 'Failed to upload mesh file');
-            }
-            // Continue with Excel processing after successful mesh file upload
-            processMFExcel();
-        })
-        .catch(error => {
-            errorMessage.style.color = '#d9534f';
-            errorMessage.textContent = error.message || 'Error uploading mesh file. Please try again.';
-        });
-    } else {
-        // Proceed without mesh file upload
-        processMFExcel();
-    }
-});
-
 // Extract Excel processing to a separate function
 function processMFExcel() {
     const errorMessage = document.getElementById('errorMessage');
-    
+
     // Continue with Excel processing
     fetch('/api/read-protocol-excel')
         .then(response => response.arrayBuffer())
         .then(data => {
-            const workbook = XLSX.read(new Uint8Array(data), {type: 'array'});
+            const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
             const outputWorkbook = XLSX.utils.book_new();
-            
+
             workbook.SheetNames.forEach((sheetName) => {
                 const worksheet = workbook.Sheets[sheetName];
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-                  const replacements = {
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                const replacements = {
                     'P1': document.getElementById('p1').value.trim() || null,
                     'P2': document.getElementById('p2').value.trim() || null,
                     'P3': document.getElementById('p3').value.trim() || null,
@@ -107,20 +113,20 @@ function processMFExcel() {
                 // Create new sheet with replacements and preserve original P/L values
                 const newSheet = jsonData.map((row, rowIndex) => {
                     if (!Array.isArray(row)) return row;
-                    
+
                     // Store original P and L values for this row
                     const originalPValues = [];
                     const originalLValues = [];
-                    
+
                     const modifiedRow = row.map(cell => {
                         if (cell === null || cell === undefined) return cell;
                         const cellStr = String(cell).trim();
-                        
+
                         // Store original P values before replacement
                         if (cellStr.match(/^P[1-3]$/)) {
                             originalPValues.push(cellStr);
                         }
-                        
+
                         // Store original L values before replacement
                         if (cellStr.match(/^L[1-5]$/)) {
                             originalLValues.push(cellStr);
@@ -143,13 +149,13 @@ function processMFExcel() {
                         if (replacements.hasOwnProperty(cellStr) && replacements[cellStr] !== null) {
                             return replacements[cellStr];
                         }
-                        
+
                         return cell;
                     });
-                    
+
                     // Add original P and L values as new columns at the end
                     const extendedRow = [...modifiedRow];
-                    
+
                     // Add header for first row
                     if (rowIndex === 0) {
                         extendedRow.push('Original P Values', 'Original L Values');
@@ -159,7 +165,7 @@ function processMFExcel() {
                             originalLValues.join(', ')
                         );
                     }
-                    
+
                     return extendedRow;
                 });
 
@@ -169,7 +175,7 @@ function processMFExcel() {
 
             // Instead of downloading, send to server
             const excelBuffer = XLSX.write(outputWorkbook, { bookType: 'xlsx', type: 'array' });
-            
+
             // Create form data to send
             const formData = new FormData();
             formData.append('excelFile', new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'output.xlsx');
@@ -190,19 +196,19 @@ function processMFExcel() {
             return fetch('/api/read-output-excel')
                 .then(response => response.arrayBuffer())
                 .then(data => {
-                    const workbook = XLSX.read(new Uint8Array(data), {type: 'array'});
+                    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
                     const extractedData = [];
 
                     workbook.SheetNames.forEach((sheetName) => {
                         const worksheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-                        
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
                         // Find the header row
-                        let headerRowIndex = jsonData.findIndex(row => 
+                        let headerRowIndex = jsonData.findIndex(row =>
                             row && row.includes('Number Of Tests'));
-                        
+
                         if (headerRowIndex === -1) return;
-                        
+
                         const headerRow = jsonData[headerRowIndex];
                         const columns = {
                             runs: headerRow.indexOf('Number Of Tests'),
@@ -286,12 +292,12 @@ function processMFExcel() {
                 },
                 body: JSON.stringify(parameterData)
             });
-        })        .then(response => response.json())
+        }).then(response => response.json())
         .then(data => {
             if (!data.success) {
                 throw new Error(data.message || 'Error generating parameter file');
             }
-            
+
             // Create protocol-based folder structure immediately
             const projectName = sessionStorage.getItem('currentProject') || 'DefaultProject';
             return fetch('/api/create-protocol-folders', {

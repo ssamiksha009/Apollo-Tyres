@@ -6,18 +6,22 @@ body {
     flex-direction: column;
 }
 
-.main-header {
+/* .main-header {
     padding: 10px 0;
-}
+} */
 
 main {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 0 10px; /* Reduced from 20px */
-    max-width: 1400px;  /* Increased from default */
-    margin: 0 auto;     /* Center the main content */
-    width: 100%;        /* Take full width up to max-width */
+    padding: 0 10px;
+    /* Reduced from 20px */
+    max-width: 1400px;
+    /* Increased from default */
+    margin: 0 auto;
+    /* Center the main content */
+    width: 100%;
+    /* Take full width up to max-width */
 }
 
 .page-title {
@@ -30,35 +34,44 @@ main {
 
 .input-container {
     text-align: center;
-    margin: 10px 0;  /* Reduced from 15px */
+    margin: 10px 0;
+    /* Reduced from 15px */
     flex: 1;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     max-width: 1400px;
-    margin: 5px auto;  /* Reduced from 10px */
-    gap: 5px;  /* Reduced from 10px */
+    margin: 5px auto;
+    /* Reduced from 10px */
+    gap: 5px;
+    /* Reduced from 10px */
     flex-wrap: wrap;
-    padding: 10px 5px;  /* Reduced from 15px 10px */
+    padding: 10px 5px;
+    /* Reduced from 15px 10px */
 }
 
 .input-group {
     flex: 1;
     display: flex;
     flex-direction: column;
-    margin: 0 2px;  /* Reduced from 0 5px */
+    margin: 0 2px;
+    /* Reduced from 0 5px */
     text-align: center;
-    min-width: 220px; /* Reduced from 250px */
+    min-width: 220px;
+    /* Reduced from 250px */
 }
 
 .input-group h3 {
     color: #582C7C;
-    margin-bottom: 10px;  /* Reduced from 15px */
-    font-size: 20px;  /* Reduced from 22px */
+    margin-bottom: 10px;
+    /* Reduced from 15px */
+    font-size: 20px;
+    /* Reduced from 22px */
 }
 
 .input-row {
-    margin-bottom: 8px;  /* Reduced from 10px */
+    margin-bottom: 8px;
+    /* Reduced from 10px */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -76,7 +89,8 @@ main {
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    max-width: 180px; /* Reduced from 200px */
+    max-width: 180px;
+    /* Reduced from 200px */
 }
 
 .input-row input:invalid {
@@ -106,7 +120,8 @@ main {
 
 .submit-button {
     padding: 12px 40px;
-    background-color: #2E8B57; /* Green color */
+    background-color: #2E8B57;
+    /* Green color */
     color: white;
     border: none;
     border-radius: 4px;
@@ -117,10 +132,11 @@ main {
 }
 
 .submit-button:hover {
-    background-color: #216e43; /* Darker green on hover */
+    background-color: #216e43;
+    /* Darker green on hover */
 }
 
-.logout-button {
+/* .logout-button {
     position: absolute;
     right: 20px;
     top: 20px;
@@ -135,7 +151,7 @@ main {
 
 .logout-button:hover {
     background-color: #c82333;
-}
+} */
 
 footer {
     margin-top: auto;
@@ -168,10 +184,13 @@ footer {
 
 /* Summary section styles */
 .summary-container {
-    max-width: 1400px;  /* Increased from 1200px to match */
+    max-width: 1400px;
+    /* Increased from 1200px to match */
     margin: 20px auto;
-    padding: 20px;  /* Increased from 0 20px */
-    min-height: 150px;  /* Added minimum height */
+    padding: 20px;
+    /* Increased from 0 20px */
+    min-height: 150px;
+    /* Added minimum height */
     border: 1px solid #ddd;
     border-radius: 4px;
     background-color: #f9f9f9;
@@ -180,22 +199,25 @@ footer {
 .summary-title {
     color: #582C7C;
     text-align: center;
-    margin-bottom: 10px;  /* Reduced from 15px */
+    margin-bottom: 10px;
+    /* Reduced from 15px */
     font-size: 20px;
 }
 
 .summary-content {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;           /* Reduced from 10px */
+    gap: 8px;
+    /* Reduced from 10px */
     justify-content: center;
 }
 
 .summary-item {
     background-color: #fff;
-    padding: 8px 12px;  /* Reduced from 10px 15px */
+    padding: 8px 12px;
+    /* Reduced from 10px 15px */
     border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .test-name {
@@ -211,9 +233,11 @@ footer {
 /* File upload styling */
 .file-upload {
     display: flex;
-    align-items: center;  /* Vertically center the input */
+    align-items: center;
+    /* Vertically center the input */
     justify-content: center;
-    height: 100%;  /* Take full height of parent */
+    height: 100%;
+    /* Take full height of parent */
 }
 
 .file-upload input[type="file"] {
@@ -221,22 +245,28 @@ footer {
     border: 1px solid #ccc;
     border-radius: 4px;
     background-color: #fff;
-    width: 280px;  /* Increased width */
-    height: 40px;  /* Added explicit height */
+    width: 280px;
+    /* Increased width */
+    height: 40px;
+    /* Added explicit height */
     margin-left: 20px;
-    font-size: 11px;  /* Further reduced font size from 12px */
+    font-size: 11px;
+    /* Further reduced font size from 12px */
 }
 
 .file-upload input[type="file"]::-webkit-file-upload-button {
     background: #582C7C;
     color: white;
-    padding: 8px 12px;  /* Increased padding */
+    padding: 8px 12px;
+    /* Increased padding */
     border: none;
     border-radius: 3px;
     cursor: pointer;
     width: 80px;
-    margin-right: 12px;  /* Add space after button */
-    font-size: 11px;  /* Further reduced font size from 12px */
+    margin-right: 12px;
+    /* Add space after button */
+    font-size: 11px;
+    /* Further reduced font size from 12px */
 }
 
 .file-upload input[type="file"]::-webkit-file-upload-button:hover {
